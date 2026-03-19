@@ -2,946 +2,958 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FlyType — Physics Keyboard Game</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>FRAME CATCHER</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+* { margin:0; padding:0; box-sizing:border-box; }
 
-  :root {
-    --bg: #080c14;
-    --surface: #0d1321;
-    --surface2: #121a2e;
-    --border: #1e2d4a;
-    --neon: #00f0ff;
-    --neon2: #ff3cac;
-    --neon3: #ffd700;
-    --neon4: #39ff14;
-    --text: #c8deff;
-    --dim: #3a5070;
-    --key-bg: #0f1a2e;
-    --key-border: #1e3a5a;
-    --key-glow: rgba(0, 240, 255, 0.15);
-    --key-press: #00f0ff;
-  }
+body {
+  background:#000;
+  overflow:hidden;
+  width:100vw;
+  height:100vh;
+  touch-action:none;
+  font-family:'Orbitron','Courier New',monospace;
+  -webkit-user-select:none;
+  user-select:none;
+}
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
+canvas { display:block; position:fixed; top:0; left:0; }
 
-  body {
-    background: var(--bg);
-    color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    overflow-x: hidden;
-    position: relative;
-  }
+/* ── HUD ── */
+#hud {
+  position:fixed; top:0; left:0; right:0;
+  padding:22px 28px 0;
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-start;
+  z-index:10;
+  pointer-events:none;
+}
 
-  /* Animated grid background */
-  body::before {
-    content: '';
-    position: fixed;
-    inset: 0;
-    background-image:
-      linear-gradient(rgba(0,240,255,0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0,240,255,0.03) 1px, transparent 1px);
-    background-size: 40px 40px;
-    pointer-events: none;
-    z-index: 0;
-  }
+.hud-panel {
+  background:rgba(0,10,20,0.7);
+  border:1px solid rgba(0,220,255,0.2);
+  border-radius:10px;
+  padding:8px 16px;
+  backdrop-filter:blur(6px);
+}
 
-  body::after {
-    content: '';
-    position: fixed;
-    bottom: 0; left: 0; right: 0;
-    height: 200px;
-    background: linear-gradient(transparent, rgba(0,240,255,0.04));
-    pointer-events: none;
-    z-index: 0;
-  }
+.hud-label {
+  font-size:0.52rem;
+  letter-spacing:0.35em;
+  color:rgba(0,220,255,0.45);
+  text-transform:uppercase;
+  margin-bottom:2px;
+}
 
-  .game-wrap {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    max-width: 860px;
-    padding: 20px 16px 30px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 18px;
-  }
+.hud-val {
+  font-size:1.7rem;
+  font-weight:900;
+  color:#00dcff;
+  text-shadow:0 0 18px rgba(0,220,255,0.7);
+  line-height:1;
+}
 
-  /* Header */
-  header {
-    text-align: center;
-  }
+#combo-display {
+  position:fixed;
+  top:50%;
+  left:50%;
+  transform:translate(-50%,-50%) scale(0);
+  font-size:1.6rem;
+  font-weight:900;
+  color:#ffd700;
+  text-shadow:0 0 25px rgba(255,215,0,0.9);
+  letter-spacing:0.15em;
+  pointer-events:none;
+  z-index:12;
+  opacity:0;
+  transition:transform 0.15s cubic-bezier(0.34,1.56,0.64,1), opacity 0.15s;
+}
+#combo-display.show {
+  transform:translate(-50%,-50%) scale(1);
+  opacity:1;
+}
 
-  header h1 {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2.2rem;
-    font-weight: 900;
-    letter-spacing: 0.15em;
-    background: linear-gradient(90deg, var(--neon), var(--neon2));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    text-shadow: none;
-    filter: drop-shadow(0 0 20px rgba(0,240,255,0.5));
-  }
+.lives-row {
+  display:flex;
+  gap:7px;
+  margin-top:6px;
+}
 
-  header p {
-    font-size: 0.72rem;
-    color: var(--dim);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-top: 4px;
-  }
+.life-sq {
+  width:16px;
+  height:16px;
+  border:2px solid #ff3366;
+  box-shadow:0 0 8px rgba(255,51,102,0.7), inset 0 0 4px rgba(255,51,102,0.3);
+  background:rgba(255,51,102,0.15);
+  border-radius:3px;
+  transition:all 0.4s;
+}
+.life-sq.dead {
+  border-color:rgba(255,51,102,0.15);
+  background:transparent;
+  box-shadow:none;
+}
 
-  /* Stats row */
-  .stats {
-    display: flex;
-    gap: 20px;
-    width: 100%;
-    justify-content: center;
-  }
+/* ── OVERLAY SCREENS ── */
+.screen {
+  position:fixed;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  z-index:30;
+  transition:opacity 0.5s;
+}
+.screen.hidden { opacity:0; pointer-events:none; }
 
-  .stat-box {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 20px;
-    text-align: center;
-    min-width: 90px;
-    position: relative;
-    overflow: hidden;
-  }
+.screen-bg {
+  position:absolute;
+  inset:0;
+  background:radial-gradient(ellipse at 50% 40%, rgba(0,15,35,0.92), rgba(0,0,5,0.97));
+}
 
-  .stat-box::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--neon), var(--neon2));
-    opacity: 0.7;
-  }
+.screen-content { position:relative; z-index:1; text-align:center; padding:30px; }
 
-  .stat-label {
-    font-size: 0.6rem;
-    color: var(--dim);
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-  }
+.game-title {
+  font-size:clamp(2.8rem,10vw,4.5rem);
+  font-weight:900;
+  letter-spacing:0.08em;
+  line-height:0.9;
+  margin-bottom:10px;
+}
+.game-title .t1 {
+  display:block;
+  background:linear-gradient(135deg,#00dcff,#0088cc);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0 0 30px rgba(0,200,255,0.5));
+}
+.game-title .t2 {
+  display:block;
+  background:linear-gradient(135deg,#ff3cac,#cc0077);
+  -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent;
+  background-clip:text;
+  filter:drop-shadow(0 0 30px rgba(255,60,172,0.5));
+}
 
-  .stat-value {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    color: var(--neon);
-    line-height: 1.2;
-  }
+.subtitle {
+  font-size:0.65rem;
+  letter-spacing:0.45em;
+  color:rgba(150,200,255,0.4);
+  text-transform:uppercase;
+  margin-bottom:50px;
+}
 
-  /* Word display area */
-  .word-display-wrap {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 14px 20px 12px;
-    position: relative;
-    overflow: hidden;
-  }
+.tap-prompt {
+  font-size:0.95rem;
+  font-weight:700;
+  letter-spacing:0.25em;
+  color:#00dcff;
+  text-shadow:0 0 20px rgba(0,220,255,0.8);
+  text-transform:uppercase;
+  animation:pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.2} }
 
-  .word-display-wrap::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--neon2), transparent);
-    opacity: 0.6;
-  }
+.inst-box {
+  margin-top:44px;
+  border:1px solid rgba(0,150,200,0.2);
+  border-radius:12px;
+  padding:20px 28px;
+  background:rgba(0,20,40,0.5);
+}
+.inst-line {
+  font-size:0.62rem;
+  letter-spacing:0.12em;
+  color:rgba(160,210,255,0.45);
+  text-transform:uppercase;
+  line-height:2;
+}
 
-  .target-label {
-    font-size: 0.6rem;
-    color: var(--dim);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-bottom: 8px;
-  }
+.final-score-big {
+  font-size:clamp(3rem,14vw,5.5rem);
+  font-weight:900;
+  color:#ffd700;
+  text-shadow:0 0 40px rgba(255,215,0,0.8);
+  line-height:1;
+  margin:16px 0 10px;
+}
 
-  .target-word {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.6rem;
-    letter-spacing: 0.25em;
-    display: flex;
-    gap: 4px;
-    flex-wrap: wrap;
-    margin-bottom: 10px;
-  }
+.hs-tag {
+  font-size:0.7rem;
+  letter-spacing:0.22em;
+  color:#39ff14;
+  text-shadow:0 0 14px rgba(57,255,20,0.8);
+  text-transform:uppercase;
+  min-height:1.3em;
+}
 
-  .target-char {
-    transition: color 0.2s, text-shadow 0.2s;
-  }
+/* ── SCORE POPUP ── */
+.score-pop {
+  position:fixed;
+  font-family:'Orbitron',monospace;
+  font-weight:900;
+  pointer-events:none;
+  z-index:20;
+  animation:pop-fly 1.1s ease-out forwards;
+  white-space:nowrap;
+}
+@keyframes pop-fly {
+  0%   { transform:translateY(0) scale(1);   opacity:1; }
+  100% { transform:translateY(-90px) scale(1.5); opacity:0; }
+}
 
-  .target-char.pending { color: var(--dim); }
-  .target-char.correct {
-    color: var(--neon4);
-    text-shadow: 0 0 12px var(--neon4);
-  }
-  .target-char.wrong {
-    color: var(--neon2);
-    text-shadow: 0 0 12px var(--neon2);
-  }
-  .target-char.current {
-    color: var(--neon);
-    text-shadow: 0 0 16px var(--neon);
-    animation: blink-cur 0.8s step-end infinite;
-  }
-
-  @keyframes blink-cur {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
-
-  /* Typed text display */
-  .typed-display {
-    min-height: 44px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    padding: 8px 14px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1.3rem;
-    letter-spacing: 0.2em;
-    color: var(--neon);
-    display: flex;
-    align-items: center;
-    gap: 2px;
-    min-width: 200px;
-    flex-wrap: wrap;
-    position: relative;
-  }
-
-  .typed-display .cursor {
-    display: inline-block;
-    width: 3px;
-    height: 1.2em;
-    background: var(--neon);
-    animation: blink 1s step-end infinite;
-    border-radius: 2px;
-    box-shadow: 0 0 8px var(--neon);
-  }
-
-  @keyframes blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-
-  /* Landed letters in typed display */
-  .landed-letter {
-    display: inline-block;
-    font-family: 'Orbitron', sans-serif;
-    letter-spacing: 0.1em;
-    color: var(--neon);
-    animation: land-bounce 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
-  }
-
-  .landed-letter.wrong-letter {
-    color: var(--neon2);
-    text-shadow: 0 0 10px var(--neon2);
-  }
-
-  @keyframes land-bounce {
-    0% { transform: scale(1.8); opacity: 0.5; }
-    50% { transform: scale(0.85); }
-    75% { transform: scale(1.1); }
-    100% { transform: scale(1); opacity: 1; }
-  }
-
-  /* Flying letter canvas */
-  #fly-canvas {
-    position: fixed;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-    pointer-events: none;
-    z-index: 999;
-  }
-
-  /* Success/fail flash */
-  .flash-overlay {
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1000;
-    opacity: 0;
-    transition: opacity 0.1s;
-  }
-
-  .flash-overlay.success { background: rgba(57, 255, 20, 0.08); }
-  .flash-overlay.fail    { background: rgba(255, 60, 172, 0.1); }
-  .flash-overlay.active  { opacity: 1; }
-
-  /* Keyboard area */
-  .keyboard-container {
-    width: 100%;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 16px 12px 18px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .keyboard-container::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, var(--neon), transparent);
-    opacity: 0.5;
-  }
-
-  .kb-label {
-    font-size: 0.6rem;
-    color: var(--dim);
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    margin-bottom: 12px;
-    text-align: center;
-  }
-
-  .kb-row {
-    display: flex;
-    justify-content: center;
-    gap: 6px;
-    margin-bottom: 6px;
-  }
-
-  .key {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--key-bg);
-    border: 1px solid var(--key-border);
-    border-radius: 7px;
-    color: var(--text);
-    font-family: 'Share Tech Mono', monospace;
-    font-size: 0.95rem;
-    font-weight: 600;
-    cursor: pointer;
-    user-select: none;
-    transition: all 0.08s ease;
-    position: relative;
-    overflow: hidden;
-    width: 52px;
-    height: 50px;
-    box-shadow: 0 4px 0 #060b14, inset 0 1px 0 rgba(255,255,255,0.05);
-    letter-spacing: 0.05em;
-  }
-
-  .key::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 50% 0%, var(--key-glow), transparent 70%);
-    opacity: 0;
-    transition: opacity 0.15s;
-  }
-
-  .key:hover {
-    border-color: var(--neon);
-    color: var(--neon);
-    box-shadow: 0 4px 0 #060b14, 0 0 12px rgba(0,240,255,0.2), inset 0 1px 0 rgba(255,255,255,0.05);
-  }
-
-  .key:hover::before { opacity: 1; }
-
-  .key:active, .key.pressed {
-    transform: translateY(3px);
-    box-shadow: 0 1px 0 #060b14, 0 0 20px rgba(0,240,255,0.4);
-    border-color: var(--neon);
-    color: var(--neon);
-    background: rgba(0, 240, 255, 0.08);
-  }
-
-  .key.space-key {
-    width: 260px;
-    font-size: 0.7rem;
-    letter-spacing: 0.3em;
-    color: var(--dim);
-  }
-
-  .key.backspace-key {
-    width: 72px;
-    font-size: 0.7rem;
-    color: var(--dim);
-  }
-
-  .key.wide-key { width: 74px; }
-
-  /* Particle effects */
-  .particle {
-    position: fixed;
-    pointer-events: none;
-    z-index: 998;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.7rem;
-    color: var(--neon3);
-    font-weight: 700;
-  }
-
-  /* Word complete celebration */
-  .word-complete-banner {
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(0);
-    font-family: 'Orbitron', sans-serif;
-    font-size: 2.5rem;
-    font-weight: 900;
-    pointer-events: none;
-    z-index: 1001;
-    text-align: center;
-    opacity: 0;
-    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s;
-  }
-
-  .word-complete-banner.show {
-    transform: translate(-50%, -50%) scale(1);
-    opacity: 1;
-  }
-
-  /* Message / info */
-  .info-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  .hint-text {
-    font-size: 0.68rem;
-    color: var(--dim);
-    letter-spacing: 0.1em;
-  }
-
-  .hint-text span {
-    color: var(--neon);
-  }
-
-  .next-btn {
-    font-family: 'Orbitron', sans-serif;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    padding: 8px 18px;
-    background: transparent;
-    border: 1px solid var(--neon);
-    border-radius: 6px;
-    color: var(--neon);
-    cursor: pointer;
-    transition: all 0.15s;
-    text-transform: uppercase;
-    display: none;
-  }
-
-  .next-btn:hover {
-    background: rgba(0,240,255,0.1);
-    box-shadow: 0 0 16px rgba(0,240,255,0.3);
-  }
-
-  .next-btn.visible { display: block; }
-
-  /* Streak indicator */
-  .streak-flash {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    font-family: 'Orbitron', sans-serif;
-    font-size: 1rem;
-    font-weight: 900;
-    color: var(--neon3);
-    text-shadow: 0 0 20px var(--neon3);
-    pointer-events: none;
-    z-index: 1002;
-    opacity: 0;
-    transform: translateY(10px);
-    transition: all 0.3s;
-  }
-
-  .streak-flash.show {
-    opacity: 1;
-    transform: translateY(0);
-  }
-
-  /* Category badge */
-  .category-badge {
-    font-size: 0.6rem;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--neon2);
-    border: 1px solid rgba(255,60,172,0.3);
-    border-radius: 20px;
-    padding: 2px 10px;
-    display: inline-block;
-  }
+/* ── FLASH ── */
+#flash {
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:11;
+  opacity:0;
+  transition:opacity 0.08s;
+}
 </style>
 </head>
 <body>
 
-<canvas id="fly-canvas"></canvas>
-<div class="flash-overlay" id="flash"></div>
-<div class="word-complete-banner" id="complete-banner"></div>
-<div class="streak-flash" id="streak-flash"></div>
+<div id="flash"></div>
 
-<div class="game-wrap">
-  <header>
-    <h1>FLYTYPE</h1>
-    <p>physics keyboard challenge</p>
-  </header>
-
-  <div class="stats">
-    <div class="stat-box">
-      <div class="stat-label">Score</div>
-      <div class="stat-value" id="score-val">0</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Streak</div>
-      <div class="stat-value" id="streak-val">0</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Words</div>
-      <div class="stat-value" id="words-val">0</div>
-    </div>
-    <div class="stat-box">
-      <div class="stat-label">Level</div>
-      <div class="stat-value" id="level-val">1</div>
+<div id="hud">
+  <div class="hud-panel">
+    <div class="hud-label">Score</div>
+    <div class="hud-val" id="h-score">0</div>
+    <div class="lives-row">
+      <div class="life-sq" id="l0"></div>
+      <div class="life-sq" id="l1"></div>
+      <div class="life-sq" id="l2"></div>
     </div>
   </div>
-
-  <div class="word-display-wrap">
-    <div class="target-label">▸ Type this word <span class="category-badge" id="cat-badge">animals</span></div>
-    <div class="target-word" id="target-word"></div>
-    <div style="display:flex; align-items:center; gap:12px; margin-top:6px;">
-      <div style="font-size:0.62rem; color:var(--dim); letter-spacing:0.2em; text-transform:uppercase;">Typed:</div>
-      <div class="typed-display" id="typed-display"><span class="cursor"></span></div>
-    </div>
-  </div>
-
-  <div class="info-row">
-    <div class="hint-text">Click keys below — watch them <span>fly</span> into place!</div>
-    <button class="next-btn" id="next-btn" onclick="nextWord()">Next Word →</button>
-  </div>
-
-  <div class="keyboard-container">
-    <div class="kb-label">◈ flytype keyboard ◈</div>
-    <div id="keyboard"></div>
+  <div class="hud-panel" style="text-align:right">
+    <div class="hud-label">Level</div>
+    <div class="hud-val" id="h-level" style="color:#ff3cac;text-shadow:0 0 18px rgba(255,60,172,0.7)">1</div>
   </div>
 </div>
 
+<div id="combo-display">×<span id="combo-num">0</span> COMBO!</div>
+
+<!-- Title -->
+<div class="screen" id="scr-title">
+  <div class="screen-bg"></div>
+  <div class="screen-content">
+    <div class="game-title">
+      <span class="t1">FRAME</span>
+      <span class="t2">CATCHER</span>
+    </div>
+    <div class="subtitle">3D Physics Challenge</div>
+    <div class="tap-prompt">Tap to Play</div>
+    <div class="inst-box">
+      <div class="inst-line">Drag the frame left & right</div>
+      <div class="inst-line">Catch cubes as they fall through</div>
+      <div class="inst-line">Miss 3 cubes — Game Over</div>
+    </div>
+  </div>
+</div>
+
+<!-- Game Over -->
+<div class="screen hidden" id="scr-over">
+  <div class="screen-bg"></div>
+  <div class="screen-content">
+    <div class="game-title">
+      <span class="t1">GAME</span>
+      <span class="t2">OVER</span>
+    </div>
+    <div class="subtitle">Final Score</div>
+    <div class="final-score-big" id="final-score">0</div>
+    <div class="hs-tag" id="hs-tag"></div>
+    <div class="tap-prompt" style="margin-top:44px">Tap to Retry</div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
-// ─── Word lists by category ────────────────────────────────────────────
-const wordLists = {
-  animals:  ['cat','dog','fox','owl','bear','wolf','frog','lion','fish','duck','crab','deer','hawk','mole','crow','puma','zebra','shark','eagle','tiger','snake','horse','llama','rhino','koala','moose','bison','hyena','gecko','lemur'],
-  space:    ['sun','moon','star','mars','nova','void','comet','orbit','pluto','venus','nebula','quasar','saturn','cosmos','galaxy','meteor','pulsar','aurora','photon','zenith','eclipse','Jupiter','Uranus','Neptune'],
-  food:     ['pie','egg','ham','bun','cake','chip','corn','lime','milk','rice','soup','taco','beet','kiwi','olive','sushi','salad','pizza','grape','lemon','mango','bacon','bagel','cream','pasta','peach','melon','toast','waffle','cherry'],
-  tech:     ['bit','cpu','gpu','ram','lan','wifi','data','byte','code','node','loop','grid','hash','icon','ping','port','root','sync','chat','blog','cloud','debug','query','stack','pixel','cache','array','token','regex','frame'],
-  nature:   ['oak','sea','ice','dew','fog','mud','ash','rock','sand','cave','leaf','rain','snow','wind','wave','lake','moss','pine','tide','gust','storm','cliff','grove','field','brook','coral','fern','bloom','thorn','birch'],
-};
+// ═══════════════════════════════════════════════════════════
+//  FRAME CATCHER — Complete Game
+// ═══════════════════════════════════════════════════════════
 
-const categories = Object.keys(wordLists);
-let currentCategory = 'animals';
-let currentWord = '';
-let typedSoFar = '';
-let score = 0;
-let streak = 0;
-let wordsCompleted = 0;
-let level = 1;
-let wordDone = false;
-let inFlight = false;
-let flightQueue = [];
+const W = window.innerWidth, H = window.innerHeight;
 
-// ─── Canvas physics ────────────────────────────────────────────────────
-const canvas = document.getElementById('fly-canvas');
-const ctx = canvas.getContext('2d');
-let particles = [];
+// ── Renderer ────────────────────────────────────────────────
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(W, H);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2.5));
+renderer.setClearColor(0x010812, 1);
+renderer.shadowMap.enabled = false;
+document.body.appendChild(renderer.domElement);
 
-function resizeCanvas() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-resizeCanvas();
-window.addEventListener('resize', resizeCanvas);
+// ── Scene ───────────────────────────────────────────────────
+const scene = new THREE.Scene();
+scene.fog = new THREE.FogExp2(0x010812, 0.022);
 
-function lerp(a, b, t) { return a + (b - a) * t; }
+// ── Camera ──────────────────────────────────────────────────
+const camera = new THREE.PerspectiveCamera(58, W / H, 0.1, 120);
+camera.position.set(0, 7, 20);
+camera.lookAt(0, -1, 0);
 
-class FlyingLetter {
-  constructor(letter, sx, sy, tx, ty, color, onLand) {
-    this.letter = letter;
-    this.x = sx; this.y = sy;
-    this.tx = tx; this.ty = ty;
-    this.color = color;
-    this.onLand = onLand;
-    this.done = false;
-    this.t = 0;
+const camBase = { x: 0, y: 7 };
+let camShakeAmt = 0;
 
-    // Physics arc
-    const dx = tx - sx, dy = ty - sy;
-    const dist = Math.sqrt(dx*dx + dy*dy);
-    this.arcHeight = -(dist * (0.4 + Math.random() * 0.3));
-    this.spin = (Math.random() - 0.5) * 720;
-    this.angle = 0;
-    this.speed = 0.028 + Math.random() * 0.018 + (level * 0.003);
-    this.scale = 1;
-    this.trail = [];
+// ── Lighting ────────────────────────────────────────────────
+scene.add(new THREE.AmbientLight(0x0a1830, 4));
+
+const sun = new THREE.DirectionalLight(0xffffff, 2);
+sun.position.set(6, 12, 8);
+scene.add(sun);
+
+const fillLight = new THREE.PointLight(0x0055aa, 3, 30);
+fillLight.position.set(-8, 4, 8);
+scene.add(fillLight);
+
+const rimLight = new THREE.PointLight(0xff3cac, 1.5, 25);
+rimLight.position.set(8, -2, -8);
+scene.add(rimLight);
+
+// Frame glow light
+const framePL = new THREE.PointLight(0x00dcff, 4, 10);
+framePL.position.set(0, -4, 2);
+scene.add(framePL);
+
+// ── Stars ───────────────────────────────────────────────────
+(function buildStars() {
+  const pos = new Float32Array(900 * 3);
+  for (let i = 0; i < 900; i++) {
+    pos[i*3]   = (Math.random()-0.5)*100;
+    pos[i*3+1] = (Math.random()-0.5)*100;
+    pos[i*3+2] = Math.random()*-80 - 5;
   }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat = new THREE.PointsMaterial({ color:0x88bbff, size:0.07, transparent:true, opacity:0.75 });
+  scene.add(new THREE.Points(geo, mat));
+})();
 
-  update() {
-    this.t += this.speed;
-    if (this.t >= 1) { this.t = 1; this.done = true; this.onLand(); }
+// ── Grid floor ──────────────────────────────────────────────
+(function buildGrid() {
+  const g = new THREE.GridHelper(60, 24, 0x001122, 0x001122);
+  g.position.y = -12;
+  g.material.transparent = true;
+  g.material.opacity = 0.5;
+  scene.add(g);
+})();
 
-    const ease = this.t < 0.5
-      ? 4 * this.t * this.t * this.t
-      : 1 - Math.pow(-2 * this.t + 2, 3) / 2;
+// ── Horizon glow ────────────────────────────────────────────
+(function buildHorizon() {
+  const geo = new THREE.PlaneGeometry(60, 8);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0x001830,
+    transparent: true,
+    opacity: 0.5,
+    side: THREE.DoubleSide,
+  });
+  const m = new THREE.Mesh(geo, mat);
+  m.rotation.x = -Math.PI / 2;
+  m.position.y = -12;
+  scene.add(m);
+})();
 
-    this.x = lerp(this.x, this.tx, this.speed * 1.5) * 0 + lerp(
-      this.x === this.tx ? this.tx : this.x,
-      this.tx,
-      0
+// ── Ambient floating particles ───────────────────────────────
+const ambientParticles = [];
+(function buildAmbient() {
+  for (let i = 0; i < 30; i++) {
+    const geo = new THREE.SphereGeometry(0.04, 4, 4);
+    const mat = new THREE.MeshBasicMaterial({
+      color: new THREE.Color().setHSL(Math.random(), 1, 0.6),
+      transparent: true,
+      opacity: 0.35,
+    });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.set(
+      (Math.random()-0.5)*18,
+      Math.random()*20 - 8,
+      (Math.random()-0.5)*5
     );
-
-    // Bezier: P = (1-t)²P0 + 2(1-t)tP1 + t²P2
-    // P1 is midpoint raised up by arcHeight
-    const mx = (parseFloat(this.constructor._sx || this.tx) + this.tx) / 2;
-    const my = (parseFloat(this.constructor._sy || this.ty) + this.ty) / 2 + this.arcHeight;
-    this.constructor._sx = this.constructor._sx;
-
-    const t = this.t;
-    const _sx = this._startX, _sy = this._startY;
-    const _mx = (_sx + this.tx) / 2;
-    const _my = (_sy + this.ty) / 2 + this.arcHeight;
-
-    this.x = (1-t)*(1-t)*_sx + 2*(1-t)*t*_mx + t*t*this.tx;
-    this.y = (1-t)*(1-t)*_sy + 2*(1-t)*t*_my + t*t*this.ty;
-    this.angle = this.spin * t;
-    this.scale = 1.4 - 0.4 * Math.min(t * 2, 1) + (this.done ? 0 : 0);
-
-    this.trail.push({x: this.x, y: this.y, a: 1 - t});
-    if (this.trail.length > 8) this.trail.shift();
+    m.userData.vy = (Math.random()-0.5)*0.01;
+    m.userData.phase = Math.random()*Math.PI*2;
+    scene.add(m);
+    ambientParticles.push(m);
   }
+})();
 
-  draw() {
-    // Trail
-    for (let i = 0; i < this.trail.length; i++) {
-      const p = this.trail[i];
-      const alpha = (i / this.trail.length) * p.a * 0.4;
-      ctx.save();
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = this.color;
-      ctx.font = `bold ${10 + i}px 'Share Tech Mono', monospace`;
-      ctx.textAlign = 'center';
-      ctx.fillText(this.letter, p.x, p.y);
-      ctx.restore();
-    }
+// ═══════════════════════════════════════════════════════════
+//  FRAME
+// ═══════════════════════════════════════════════════════════
+const FRAME_HS    = 3.0;   // half-size (opening = 6 units wide)
+const BAR_T       = 0.24;  // bar thickness
+const BAR_D       = 0.55;  // bar depth (3D)
+const FRAME_Y     = -4.0;  // world Y of frame centre
+const FRAME_MAX_X = 6.5;   // max horizontal range
 
-    // Main letter
-    ctx.save();
-    ctx.translate(this.x, this.y);
-    ctx.rotate(this.angle * Math.PI / 180);
-    ctx.scale(this.scale, this.scale);
-    ctx.font = `bold 22px 'Orbitron', monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = this.color;
-    ctx.shadowColor = this.color;
-    ctx.shadowBlur = 12;
-    ctx.fillText(this.letter, 0, 0);
-    ctx.restore();
-  }
-}
+let frameGroup;
+let frameTargetX = 0;
+const frameBars = [];   // bar meshes for flash effect
 
-let flyingLetters = [];
-let animRunning = false;
+function buildFrame() {
+  frameGroup = new THREE.Group();
 
-function animLoop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  flyingLetters = flyingLetters.filter(l => !l.done);
-  for (const l of flyingLetters) { l.update(); l.draw(); }
+  const neonMat = () => new THREE.MeshStandardMaterial({
+    color:            0x00dcff,
+    emissive:         0x009ab5,
+    emissiveIntensity: 1.4,
+    metalness: 0.6,
+    roughness: 0.1,
+  });
 
-  // Spark particles
-  particles = particles.filter(p => p.life > 0);
-  for (const p of particles) {
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.15;
-    p.life -= 0.04;
-    ctx.save();
-    ctx.globalAlpha = p.life;
-    ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r * p.life, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
+  const FS = FRAME_HS, T = BAR_T, D = BAR_D;
+  const full = FS * 2 + T * 2;
 
-  if (flyingLetters.length > 0 || particles.length > 0) {
-    requestAnimationFrame(animLoop);
-  } else {
-    animRunning = false;
-  }
-}
+  const barDefs = [
+    { size:[full,  T,  D], pos:[0,    FS,  0] },
+    { size:[full,  T,  D], pos:[0,   -FS,  0] },
+    { size:[T,  FS*2,  D], pos:[-FS,  0,   0] },
+    { size:[T,  FS*2,  D], pos:[ FS,  0,   0] },
+  ];
 
-function startAnim() {
-  if (!animRunning) {
-    animRunning = true;
-    requestAnimationFrame(animLoop);
-  }
-}
+  barDefs.forEach(({size, pos}) => {
+    const mat = neonMat();
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(...size), mat);
+    mesh.position.set(...pos);
 
-function spawnSparks(x, y, color) {
-  for (let i = 0; i < 10; i++) {
-    const angle = Math.random() * Math.PI * 2;
-    const speed = 1 + Math.random() * 3;
-    particles.push({
-      x, y,
-      vx: Math.cos(angle) * speed,
-      vy: Math.sin(angle) * speed - 2,
-      color,
-      r: 2 + Math.random() * 2,
-      life: 1
+    // Inner glow shell
+    const gMat = new THREE.MeshBasicMaterial({
+      color: 0x00dcff, transparent: true, opacity: 0.1, side: THREE.BackSide
     });
-  }
+    const gShell = new THREE.Mesh(
+      new THREE.BoxGeometry(size[0]+0.15, size[1]+0.15, size[2]+0.1),
+      gMat
+    );
+    mesh.add(gShell);
+
+    frameGroup.add(mesh);
+    frameBars.push({ mesh, mat, gMat });
+  });
+
+  // Corner ornaments
+  const cornerMat = new THREE.MeshStandardMaterial({
+    color: 0xffffff,
+    emissive: 0x00ddff,
+    emissiveIntensity: 2.5,
+    metalness: 0.4,
+    roughness: 0.0,
+  });
+  [[-FS,FS],[FS,FS],[-FS,-FS],[FS,-FS]].forEach(([cx,cy]) => {
+    const c = new THREE.Mesh(
+      new THREE.BoxGeometry(T*2.2, T*2.2, D*1.8),
+      cornerMat
+    );
+    c.position.set(cx, cy, 0);
+    frameGroup.add(c);
+  });
+
+  // Inner ring effect (thin additive plane)
+  const ringGeo = new THREE.RingGeometry(FS - 0.3, FS + 0.1, 4);
+  const ringMat = new THREE.MeshBasicMaterial({
+    color: 0x00dcff,
+    transparent: true,
+    opacity: 0.04,
+    side: THREE.DoubleSide,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.rotation.z = Math.PI/4;
+  frameGroup.add(ring);
+
+  frameGroup.position.y = FRAME_Y;
+  frameGroup.rotation.x = -0.18;  // tilt to show 3D
+  scene.add(frameGroup);
 }
 
-// ─── Keyboard layout ──────────────────────────────────────────────────
-const rows = [
-  ['Q','W','E','R','T','Y','U','I','O','P'],
-  ['A','S','D','F','G','H','J','K','L'],
-  ['Z','X','C','V','B','N','M','⌫'],
-  ['SPACE']
-];
+buildFrame();
 
-function buildKeyboard() {
-  const kb = document.getElementById('keyboard');
-  rows.forEach(row => {
-    const rowDiv = document.createElement('div');
-    rowDiv.className = 'kb-row';
-    row.forEach(k => {
-      const btn = document.createElement('button');
-      btn.className = 'key';
-      btn.textContent = k;
-      btn.dataset.key = k;
-      if (k === 'SPACE') btn.classList.add('space-key');
-      else if (k === '⌫') btn.classList.add('backspace-key');
-      else if (['Q','P','A','L'].includes(k)) btn.classList.add('wide-key');
-      btn.addEventListener('click', () => handleKey(k));
-      rowDiv.appendChild(btn);
-    });
-    kb.appendChild(rowDiv);
+function setFrameGlow(color, intensity) {
+  frameBars.forEach(({mat, gMat}) => {
+    mat.emissive.setHex(color);
+    mat.emissiveIntensity = intensity;
+    gMat.opacity = intensity * 0.07;
   });
 }
 
-// ─── Game logic ───────────────────────────────────────────────────────
-function pickWord() {
-  const idx = Math.floor(Math.random() * categories.length);
-  currentCategory = categories[idx];
-  const words = wordLists[currentCategory];
-  const word = words[Math.floor(Math.random() * words.length)];
-  return word.toUpperCase();
-}
-
-function setTargetWord(word) {
-  currentWord = word;
-  typedSoFar = '';
-  wordDone = false;
-  flightQueue = [];
-  flyingLetters = [];
-  document.getElementById('next-btn').classList.remove('visible');
-  document.getElementById('cat-badge').textContent = currentCategory;
-
-  const container = document.getElementById('target-word');
-  container.innerHTML = '';
-  for (let i = 0; i < word.length; i++) {
-    const span = document.createElement('span');
-    span.className = 'target-char pending';
-    span.textContent = word[i] === ' ' ? '·' : word[i];
-    span.id = `tc-${i}`;
-    container.appendChild(span);
-  }
-  if (currentWord.length > 0) {
-    document.getElementById('tc-0').className = 'target-char current';
-  }
-
-  renderTyped();
-}
-
-function renderTyped() {
-  const disp = document.getElementById('typed-display');
-  disp.innerHTML = '';
-  for (let i = 0; i < typedSoFar.length; i++) {
-    const span = document.createElement('span');
-    span.className = 'landed-letter';
-    if (typedSoFar[i] !== currentWord[i]) span.classList.add('wrong-letter');
-    span.textContent = typedSoFar[i];
-    disp.appendChild(span);
-  }
-  const cursor = document.createElement('span');
-  cursor.className = 'cursor';
-  disp.appendChild(cursor);
-}
-
-function updateTargetHighlights() {
-  for (let i = 0; i < currentWord.length; i++) {
-    const el = document.getElementById(`tc-${i}`);
-    if (!el) continue;
-    if (i < typedSoFar.length) {
-      el.className = 'target-char ' + (typedSoFar[i] === currentWord[i] ? 'correct' : 'wrong');
-    } else if (i === typedSoFar.length) {
-      el.className = 'target-char current';
-    } else {
-      el.className = 'target-char pending';
-    }
-  }
-}
-
-function handleKey(k) {
-  if (wordDone) return;
-
-  // Visual press
-  const btn = document.querySelector(`[data-key="${k}"]`);
-  if (btn) {
-    btn.classList.add('pressed');
-    setTimeout(() => btn.classList.remove('pressed'), 100);
-  }
-
-  if (k === '⌫') {
-    if (typedSoFar.length > 0) {
-      typedSoFar = typedSoFar.slice(0, -1);
-      renderTyped();
-      updateTargetHighlights();
-    }
-    return;
-  }
-
-  const letter = k === 'SPACE' ? ' ' : k;
-  if (typedSoFar.length >= currentWord.length) return;
-
-  // Get key position for flight origin
-  const keyRect = btn ? btn.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight*0.8, width: 52, height: 50 };
-  const sx = keyRect.left + keyRect.width / 2;
-  const sy = keyRect.top + keyRect.height / 2;
-
-  // Get landing position (inside typed display, at cursor position)
-  const disp = document.getElementById('typed-display');
-  const dispRect = disp.getBoundingClientRect();
-  const charWidth = 22;
-  const tx = dispRect.left + 14 + typedSoFar.length * charWidth + charWidth / 2;
-  const ty = dispRect.top + dispRect.height / 2;
-
-  const isCorrect = letter === currentWord[typedSoFar.length];
-  const color = isCorrect ? '#00f0ff' : '#ff3cac';
-
-  // Add to typed immediately (letter appears when it lands)
-  const insertIdx = typedSoFar.length;
-  typedSoFar += letter;
-
-  // Create flying letter
-  const fl = new FlyingLetter(
-    letter === ' ' ? '·' : letter,
-    sx, sy, tx, ty, color,
-    () => {
-      spawnSparks(tx, ty, color);
-      renderTyped();
-      updateTargetHighlights();
-      checkWordComplete();
-    }
-  );
-  fl._startX = sx;
-  fl._startY = sy;
-  flyingLetters.push(fl);
-  startAnim();
-
-  updateTargetHighlights();
-}
-
-function checkWordComplete() {
-  if (typedSoFar.length < currentWord.length) return;
-  if (wordDone) return;
-
-  const allCorrect = typedSoFar.split('').every((c, i) => c === currentWord[i]);
-  wordDone = true;
-
+function flashFrame(hexColor) {
+  frameBars.forEach(({mat}) => {
+    mat.color.setHex(hexColor);
+    mat.emissive.setHex(hexColor);
+    mat.emissiveIntensity = 4;
+  });
+  framePL.color.setHex(hexColor);
+  framePL.intensity = 10;
   setTimeout(() => {
-    if (allCorrect) {
-      // Success
-      score += 10 * level + streak * 2;
-      streak++;
-      wordsCompleted++;
-      if (wordsCompleted % 5 === 0) level = Math.min(level + 1, 9);
+    frameBars.forEach(({mat}) => {
+      mat.color.setHex(0x00dcff);
+      mat.emissive.setHex(0x009ab5);
+      mat.emissiveIntensity = 1.4;
+    });
+    framePL.color.setHex(0x00dcff);
+  }, 170);
+}
 
-      document.getElementById('score-val').textContent = score;
-      document.getElementById('streak-val').textContent = streak;
-      document.getElementById('words-val').textContent = wordsCompleted;
-      document.getElementById('level-val').textContent = level;
+// ═══════════════════════════════════════════════════════════
+//  FALLING CUBES
+// ═══════════════════════════════════════════════════════════
+const CUBE_SZ   = 1.5;
+const SPAWN_Y   = 14;
+const DESPAWN_Y = -14;
 
-      showBanner('✦ PERFECT ✦', '#39ff14');
-      flashScreen('success');
-      if (streak > 1) showStreak(streak);
+const PALETTE = [
+  { c: 0xff2255, e: 0xcc0033 },
+  { c: 0xff8800, e: 0xaa5500 },
+  { c: 0x00ff88, e: 0x00aa44 },
+  { c: 0xaa00ff, e: 0x6600bb },
+  { c: 0xffee00, e: 0xaaaa00 },
+  { c: 0x00aaff, e: 0x0066cc },
+  { c: 0xff44cc, e: 0xcc0088 },
+  { c: 0x44ffdd, e: 0x00aa88 },
+];
 
-      setTimeout(() => nextWord(), 900);
-    } else {
-      // Wrong — show retry
-      streak = 0;
-      document.getElementById('streak-val').textContent = streak;
-      showBanner('✕ TRY AGAIN', '#ff3cac');
-      flashScreen('fail');
-      document.getElementById('next-btn').classList.add('visible');
+class FallingCube {
+  constructor(speed) {
+    const pal = PALETTE[Math.floor(Math.random() * PALETTE.length)];
+    const geo = new THREE.BoxGeometry(CUBE_SZ, CUBE_SZ, CUBE_SZ);
+    const mat = new THREE.MeshStandardMaterial({
+      color: pal.c,
+      emissive: pal.e,
+      emissiveIntensity: 0.9,
+      metalness: 0.55,
+      roughness: 0.18,
+    });
+    this.mesh = new THREE.Mesh(geo, mat);
+
+    // Edges
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+    this.mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo), edgeMat));
+
+    // Outer glow shell
+    const gMat = new THREE.MeshBasicMaterial({ color: pal.c, transparent: true, opacity: 0.08, side: THREE.BackSide });
+    this.mesh.add(new THREE.Mesh(new THREE.BoxGeometry(CUBE_SZ+0.3,CUBE_SZ+0.3,CUBE_SZ+0.3), gMat));
+
+    this.mesh.position.x = (Math.random()-0.5) * (FRAME_MAX_X * 1.9);
+    this.mesh.position.y = SPAWN_Y;
+    this.mesh.position.z = (Math.random()-0.5) * 1.5;
+
+    this.speed  = speed;
+    this.rotV   = new THREE.Vector3(
+      (Math.random()-0.5)*0.07,
+      (Math.random()-0.5)*0.07,
+      (Math.random()-0.5)*0.05,
+    );
+    this.color  = pal.c;
+    this.prevY  = SPAWN_Y;
+    this.checked= false;
+    this.alive  = true;
+    scene.add(this.mesh);
+  }
+
+  update() {
+    this.prevY = this.mesh.position.y;
+    this.mesh.position.y -= this.speed;
+    this.mesh.rotation.x += this.rotV.x;
+    this.mesh.rotation.y += this.rotV.y;
+    this.mesh.rotation.z += this.rotV.z;
+  }
+
+  crossedFrame() {
+    return !this.checked && this.prevY > FRAME_Y && this.mesh.position.y <= FRAME_Y;
+  }
+
+  inFrame() {
+    const dx = Math.abs(this.mesh.position.x - frameGroup.position.x);
+    return dx < FRAME_HS - CUBE_SZ * 0.45;
+  }
+
+  destroy() {
+    this.alive = false;
+    scene.remove(this.mesh);
+    this.mesh.traverse(c => {
+      if (c.geometry) c.geometry.dispose();
+      if (c.material) c.material.dispose();
+    });
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EFFECTS
+// ═══════════════════════════════════════════════════════════
+class ShatterFX {
+  constructor(pos, color) {
+    this.pieces = [];
+    for (let i = 0; i < 18; i++) {
+      const s = 0.12 + Math.random()*0.32;
+      const mat = new THREE.MeshStandardMaterial({
+        color, emissive: color, emissiveIntensity: 2,
+        transparent: true, opacity: 1,
+        metalness: 0.4, roughness: 0.2,
+      });
+      const m = new THREE.Mesh(new THREE.BoxGeometry(s,s,s), mat);
+      m.position.copy(pos);
+      const ang = Math.random()*Math.PI*2;
+      const spd = 0.12 + Math.random()*0.28;
+      m.userData = {
+        vx: Math.cos(ang)*spd,
+        vy: 0.06 + Math.random()*0.18,
+        vz: Math.sin(ang)*spd*0.6,
+        rx: (Math.random()-0.5)*0.25,
+        ry: (Math.random()-0.5)*0.25,
+        mat, life: 1,
+      };
+      scene.add(m);
+      this.pieces.push(m);
     }
-  }, 200);
+    this.done = false;
+  }
+  update() {
+    let alive = 0;
+    this.pieces.forEach(p => {
+      const d = p.userData;
+      if (d.life <= 0) return;
+      p.position.x += d.vx;
+      p.position.y += d.vy;
+      p.position.z += d.vz;
+      d.vy -= 0.015;
+      p.rotation.x += d.rx;
+      p.rotation.y += d.ry;
+      d.life -= 0.028;
+      d.mat.opacity = Math.max(0, d.life);
+      d.mat.emissiveIntensity = Math.max(0, d.life * 2.5);
+      if (d.life > 0) alive++;
+    });
+    if (alive === 0) {
+      this.pieces.forEach(p => {
+        scene.remove(p);
+        p.userData.mat.dispose();
+        p.geometry.dispose();
+      });
+      this.done = true;
+    }
+  }
 }
 
-function showBanner(text, color) {
-  const b = document.getElementById('complete-banner');
-  b.textContent = text;
-  b.style.color = color;
-  b.style.textShadow = `0 0 30px ${color}`;
-  b.classList.add('show');
-  setTimeout(() => b.classList.remove('show'), 800);
+class RippleFX {
+  constructor(pos) {
+    this.rings = [];
+    for (let i = 0; i < 3; i++) {
+      const mat = new THREE.MeshBasicMaterial({
+        color: 0xff2244, transparent: true, opacity: 0.7 - i*0.15,
+        side: THREE.DoubleSide,
+      });
+      const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.1, 0.4, 24),
+        mat
+      );
+      ring.position.set(pos.x, FRAME_Y, pos.z);
+      ring.rotation.x = -Math.PI/2 + frameGroup.rotation.x;
+      ring.userData = { mat, delay: i * 4, life: 1, started: false };
+      scene.add(ring);
+      this.rings.push(ring);
+    }
+    this.done = false;
+    this.t = 0;
+  }
+  update() {
+    this.t++;
+    let allDone = true;
+    this.rings.forEach(r => {
+      const d = r.userData;
+      if (this.t < d.delay) { allDone = false; return; }
+      if (!d.started) { d.started = true; }
+      const sc = 1 + (this.t - d.delay) * 0.22;
+      r.scale.setScalar(sc);
+      d.life -= 0.04;
+      d.mat.opacity = Math.max(0, d.life * 0.5);
+      if (d.life > 0) allDone = false;
+    });
+    if (allDone) {
+      this.rings.forEach(r => {
+        scene.remove(r);
+        r.userData.mat.dispose();
+        r.geometry.dispose();
+      });
+      this.done = true;
+    }
+  }
 }
 
-function flashScreen(type) {
-  const el = document.getElementById('flash');
-  el.className = `flash-overlay ${type} active`;
-  setTimeout(() => el.classList.remove('active'), 250);
+// ═══════════════════════════════════════════════════════════
+//  GAME STATE
+// ═══════════════════════════════════════════════════════════
+const ST = { TITLE:0, PLAY:1, OVER:2 };
+let gs = ST.TITLE;
+
+let score=0, lives=3, level=1, combo=0, caughtCount=0;
+let cubes=[], shatters=[], ripples=[];
+let spawnTimer=0, spawnInterval=110, cubeSpeed=0.065;
+let tick=0;
+let highScore = +(localStorage.getItem('fc_hs')||0);
+let comboTimer = 0;
+
+// ── HUD update ──────────────────────────────────────────────
+function hud() {
+  document.getElementById('h-score').textContent = score;
+  document.getElementById('h-level').textContent = level;
+  for (let i=0;i<3;i++)
+    document.getElementById('l'+i).classList.toggle('dead', i >= lives);
 }
 
-function showStreak(n) {
-  const el = document.getElementById('streak-flash');
-  el.textContent = `🔥 ${n}× STREAK`;
-  el.classList.add('show');
-  setTimeout(() => el.classList.remove('show'), 1500);
+// ── Flash screen ────────────────────────────────────────────
+const flashEl = document.getElementById('flash');
+function flashScreen(col) {
+  flashEl.style.background = col;
+  flashEl.style.opacity = '1';
+  setTimeout(() => flashEl.style.opacity='0', 140);
 }
 
-function nextWord() {
-  setTargetWord(pickWord());
+// ── Score popup ─────────────────────────────────────────────
+function scorePopup(pts, worldPos, isCombo) {
+  const v = worldPos.clone().project(camera);
+  const x = (v.x*0.5+0.5)*W;
+  const y = (-v.y*0.5+0.5)*H;
+  const el = document.createElement('div');
+  el.className = 'score-pop';
+  el.textContent = `+${pts}`;
+  el.style.left   = `${x-28}px`;
+  el.style.top    = `${y}px`;
+  el.style.fontSize = isCombo ? '1.8rem' : '1.2rem';
+  el.style.color  = isCombo ? '#ffd700' : '#00dcff';
+  el.style.textShadow = isCombo
+    ? '0 0 18px rgba(255,215,0,0.9)'
+    : '0 0 14px rgba(0,220,255,0.8)';
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1100);
 }
 
-// Physical keyboard support
-document.addEventListener('keydown', e => {
-  if (e.key === 'Backspace') { e.preventDefault(); handleKey('⌫'); return; }
-  if (e.key === ' ') { e.preventDefault(); handleKey('SPACE'); return; }
-  const k = e.key.toUpperCase();
-  if (/^[A-Z]$/.test(k)) handleKey(k);
+// ── Combo display ────────────────────────────────────────────
+const comboEl  = document.getElementById('combo-display');
+const comboNum = document.getElementById('combo-num');
+function showCombo(n) {
+  comboNum.textContent = n;
+  comboEl.classList.add('show');
+  clearTimeout(comboEl._t);
+  comboEl._t = setTimeout(() => comboEl.classList.remove('show'), 1000);
+}
+
+// ── Spawn ────────────────────────────────────────────────────
+function spawnCube() {
+  cubes.push(new FallingCube(cubeSpeed));
+}
+
+// ── Catch ────────────────────────────────────────────────────
+function onCatch(cube) {
+  combo++;
+  caughtCount++;
+  const mult = combo >= 3 ? Math.min(combo, 10) : 1;
+  const pts  = 100 * level * mult;
+  score += pts;
+
+  shatters.push(new ShatterFX(cube.mesh.position.clone(), cube.color));
+
+  const isCombo = combo >= 3;
+  scorePopup(pts, cube.mesh.position.clone(), isCombo);
+  if (isCombo) showCombo(combo);
+
+  flashFrame(isCombo ? 0xffd700 : 0x00ff88);
+  flashScreen(isCombo ? 'rgba(255,200,0,0.07)' : 'rgba(0,255,120,0.07)');
+
+  // Level up every 8 catches
+  if (caughtCount > 0 && caughtCount % 8 === 0) levelUp();
+
+  cube.destroy();
+  hud();
+}
+
+// ── Miss ─────────────────────────────────────────────────────
+function onMiss(cube) {
+  combo = 0;
+  lives--;
+  ripples.push(new RippleFX(cube.mesh.position.clone()));
+  flashScreen('rgba(255,20,50,0.12)');
+  camShakeAmt = 0.35;
+  cube.destroy();
+  hud();
+  if (lives <= 0) setTimeout(endGame, 350);
+}
+
+// ── Level up ─────────────────────────────────────────────────
+function levelUp() {
+  level++;
+  cubeSpeed    = Math.min(0.065 + (level-1)*0.016, 0.22);
+  spawnInterval = Math.max(52, 110 - (level-1)*9);
+
+  // Banner
+  const el = document.createElement('div');
+  el.textContent = `LEVEL ${level}`;
+  el.style.cssText=`position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+    font-family:'Orbitron',monospace;font-size:2.8rem;font-weight:900;
+    color:#ffd700;text-shadow:0 0 40px rgba(255,215,0,0.9);
+    pointer-events:none;z-index:25;animation:pop-fly 1.6s ease-out forwards`;
+  document.body.appendChild(el);
+  setTimeout(()=>el.remove(),1600);
+  hud();
+}
+
+// ── Start / End ──────────────────────────────────────────────
+function startGame() {
+  score=0; lives=3; level=1; combo=0; caughtCount=0;
+  cubeSpeed=0.065; spawnInterval=110; spawnTimer=60;
+  frameTargetX=0; frameGroup.position.x=0;
+  cubes.forEach(c=>c.destroy()); cubes=[];
+  shatters=[]; ripples=[];
+  gs=ST.PLAY;
+  hud();
+  document.getElementById('scr-title').classList.add('hidden');
+  document.getElementById('scr-over').classList.add('hidden');
+}
+
+function endGame() {
+  gs=ST.OVER;
+  if (score>highScore) {
+    highScore=score;
+    localStorage.setItem('fc_hs',highScore);
+    document.getElementById('hs-tag').textContent='★ NEW HIGH SCORE ★';
+  } else {
+    document.getElementById('hs-tag').textContent=`Best: ${highScore}`;
+  }
+  document.getElementById('final-score').textContent=score;
+  document.getElementById('scr-over').classList.remove('hidden');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  INPUT — Touch & Mouse
+// ═══════════════════════════════════════════════════════════
+let dragging=false, lastDragX=0;
+
+function tapStart(clientX) {
+  if (gs===ST.TITLE) { startGame(); return; }
+  if (gs===ST.OVER)  { startGame(); return; }
+  dragging=true;
+  lastDragX=clientX;
+}
+function tapMove(clientX) {
+  if (!dragging || gs!==ST.PLAY) return;
+  const dx = clientX - lastDragX;
+  lastDragX = clientX;
+  frameTargetX = Math.max(-FRAME_MAX_X, Math.min(FRAME_MAX_X, frameTargetX + dx*0.019));
+}
+function tapEnd() { dragging=false; }
+
+document.addEventListener('touchstart', e=>{e.preventDefault(); tapStart(e.touches[0].clientX);},{passive:false});
+document.addEventListener('touchmove',  e=>{e.preventDefault(); tapMove(e.touches[0].clientX); },{passive:false});
+document.addEventListener('touchend',   e=>{e.preventDefault(); tapEnd();                       },{passive:false});
+document.addEventListener('mousedown',  e=>tapStart(e.clientX));
+document.addEventListener('mousemove',  e=>tapMove(e.clientX));
+document.addEventListener('mouseup',    ()=>tapEnd());
+
+window.addEventListener('resize', ()=>{
+  const nW=window.innerWidth, nH=window.innerHeight;
+  camera.aspect=nW/nH; camera.updateProjectionMatrix();
+  renderer.setSize(nW,nH);
 });
 
-// ─── Init ──────────────────────────────────────────────────────────────
-buildKeyboard();
-setTargetWord(pickWord());
+// ═══════════════════════════════════════════════════════════
+//  MAIN LOOP
+// ═══════════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  tick++;
+
+  // ── Ambient particles float ──
+  ambientParticles.forEach(p => {
+    p.position.y += p.userData.vy;
+    p.position.x += Math.sin(tick*0.008 + p.userData.phase)*0.005;
+    if (p.position.y > 12)  p.position.y = -12;
+    if (p.position.y < -12) p.position.y =  12;
+  });
+
+  // ── Frame follow ──
+  frameGroup.position.x += (frameTargetX - frameGroup.position.x) * 0.14;
+  framePL.position.x = frameGroup.position.x;
+  framePL.position.y = FRAME_Y + 1;
+  framePL.intensity  = 4 + Math.sin(tick*0.06)*0.8;
+
+  // Idle frame wobble
+  frameGroup.rotation.z = Math.sin(tick*0.018)*0.012;
+
+  // ── Camera shake ──
+  if (camShakeAmt > 0.01) {
+    camera.position.x = camBase.x + (Math.random()-0.5)*camShakeAmt;
+    camera.position.y = camBase.y + (Math.random()-0.5)*camShakeAmt;
+    camShakeAmt *= 0.72;
+  } else {
+    camera.position.x = camBase.x;
+    camera.position.y = camBase.y;
+  }
+
+  if (gs !== ST.PLAY) { renderer.render(scene, camera); return; }
+
+  // ── Spawn ──
+  spawnTimer++;
+  if (spawnTimer >= spawnInterval) {
+    spawnTimer = 0;
+    spawnCube();
+    // Double spawn at high levels
+    if (level >= 5 && Math.random() < 0.28) {
+      setTimeout(()=>{ if(gs===ST.PLAY) spawnCube(); }, 450);
+    }
+    // Triple at very high levels
+    if (level >= 9 && Math.random() < 0.2) {
+      setTimeout(()=>{ if(gs===ST.PLAY) spawnCube(); }, 850);
+    }
+  }
+
+  // ── Proximity glow on frame ──
+  let closest = Infinity;
+  cubes.forEach(c => {
+    const dy = Math.abs(c.mesh.position.y - FRAME_Y);
+    if (dy < closest) closest = dy;
+  });
+  const proximity = Math.max(0, 1 - closest/7);
+  setFrameGlow(
+    proximity > 0.6 ? 0xffd700 : 0x009ab5,
+    1.4 + proximity * 2.5
+  );
+
+  // ── Update cubes ──
+  cubes = cubes.filter(cube => {
+    if (!cube.alive) return false;
+    cube.update();
+
+    if (cube.crossedFrame()) {
+      cube.checked = true;
+      if (cube.inFrame()) { onCatch(cube); return false; }
+      else                { onMiss(cube);  return false; }
+    }
+
+    if (cube.mesh.position.y < DESPAWN_Y) {
+      // Fell off without trigger (shouldn't happen, safety net)
+      if (!cube.checked) onMiss(cube);
+      else cube.destroy();
+      return false;
+    }
+    return cube.alive;
+  });
+
+  // ── Effects ──
+  shatters = shatters.filter(s => { s.update(); return !s.done; });
+  ripples  = ripples.filter(r  => { r.update();  return !r.done; });
+
+  renderer.render(scene, camera);
+}
+
+animate();
 </script>
 </body>
 </html>
