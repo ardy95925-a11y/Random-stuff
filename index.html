@@ -1,540 +1,611 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Glass Calculator</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@300;400;700&display=swap" rel="stylesheet"/>
+  <title>ΛCALC</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.11.1/math.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg1: #0a0a14;
-      --bg2: #0e0e22;
-      --glass: rgba(255,255,255,0.04);
-      --glass-border: rgba(255,255,255,0.10);
-      --glass-hover: rgba(255,255,255,0.09);
-      --glow-cyan: #00e5ff;
-      --glow-purple: #b56bff;
-      --glow-pink: #ff4dbd;
-      --text: #e8e8f8;
-      --text-dim: rgba(232,232,248,0.45);
-      --accent: #00e5ff;
+      --bg:        #08080b;
+      --panel:     #0d0d11;
+      --panel-hi:  #111116;
+      --border:    #18181f;
+      --border-hi: #252530;
+      --t1: #dedad0;
+      --t2: #50505e;
+      --t3: #22222a;
+      --gold:    #b8975a;
+      --gold-a:  rgba(184,151,90,0.11);
+      --gold-b:  rgba(184,151,90,0.20);
+      --steel:   #5a85a0;
+      --steel-a: rgba(90,133,160,0.09);
+      --steel-b: rgba(90,133,160,0.18);
+      --red:     #8c4848;
+      --red-a:   rgba(140,72,72,0.09);
+      --red-b:   rgba(140,72,72,0.18);
     }
 
-    html, body {
-      height: 100%;
-      background: var(--bg1);
-      font-family: 'DM Mono', monospace;
-      color: var(--text);
-      overflow: hidden;
-    }
+    html { min-height: 100%; background: var(--bg); }
 
-    /* ── Animated mesh background ── */
-    body::before {
-      content: '';
-      position: fixed; inset: 0; z-index: 0;
-      background:
-        radial-gradient(ellipse 70% 50% at 20% 20%, rgba(0,229,255,0.07) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 60% at 80% 80%, rgba(181,107,255,0.08) 0%, transparent 60%),
-        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255,77,189,0.04) 0%, transparent 70%);
-      animation: meshShift 12s ease-in-out infinite alternate;
-    }
-    @keyframes meshShift {
-      0%   { opacity: 1; transform: scale(1) rotate(0deg); }
-      50%  { opacity: 0.8; transform: scale(1.08) rotate(2deg); }
-      100% { opacity: 1; transform: scale(1) rotate(0deg); }
-    }
-
-    /* Floating orbs */
-    .orb {
-      position: fixed; border-radius: 50%;
-      filter: blur(80px); pointer-events: none; z-index: 0;
-      animation: orbFloat 8s ease-in-out infinite alternate;
-    }
-    .orb1 { width: 340px; height: 340px; top: -80px; left: -80px;
-      background: radial-gradient(circle, rgba(0,229,255,0.18), transparent 70%);
-      animation-duration: 9s; }
-    .orb2 { width: 280px; height: 280px; bottom: -60px; right: -60px;
-      background: radial-gradient(circle, rgba(181,107,255,0.20), transparent 70%);
-      animation-duration: 11s; animation-delay: -4s; }
-    .orb3 { width: 200px; height: 200px; top: 50%; left: 60%;
-      background: radial-gradient(circle, rgba(255,77,189,0.13), transparent 70%);
-      animation-duration: 7s; animation-delay: -2s; }
-    @keyframes orbFloat {
-      from { transform: translate(0,0) scale(1); }
-      to   { transform: translate(30px, 20px) scale(1.1); }
-    }
-
-    /* ── Layout ── */
-    .scene {
-      position: relative; z-index: 1;
+    body {
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--t1);
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 28px 16px 48px;
       min-height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      padding: 20px;
+      background-image: radial-gradient(rgba(255,255,255,0.022) 1px, transparent 1px);
+      background-size: 28px 28px;
     }
 
-    .calc-wrap {
-      width: 100%; max-width: 400px;
+    .terminal {
+      width: 100%;
+      max-width: 740px;
+      background: var(--panel);
+      border: 1px solid var(--border-hi);
+      border-radius: 3px;
+      overflow: hidden;
+      box-shadow: 0 32px 80px rgba(0,0,0,0.65), 0 2px 4px rgba(0,0,0,0.5);
     }
 
-    .label {
-      font-family: 'Syne', sans-serif;
-      font-size: 10px; letter-spacing: 0.35em;
-      text-transform: uppercase;
-      color: var(--text-dim);
-      margin-bottom: 12px;
-      padding-left: 4px;
+    /* ── Header ── */
+    .hdr {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 11px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-hi);
     }
+    .brand {
+      font-size: 10px; font-weight: 600;
+      letter-spacing: 0.28em; color: var(--t2);
+    }
+    .brand em { color: var(--gold); font-style: normal; }
 
-    /* ── Main glass card ── */
-    .calc {
-      background: var(--glass);
-      border: 1px solid var(--glass-border);
-      border-radius: 24px;
-      backdrop-filter: blur(30px) saturate(180%);
-      -webkit-backdrop-filter: blur(30px) saturate(180%);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,0.04) inset,
-        0 40px 80px rgba(0,0,0,0.6),
-        0 0 60px rgba(0,229,255,0.04);
-      padding: 20px;
-      transition: box-shadow 0.4s ease;
+    .hdr-right { display: flex; align-items: center; gap: 18px; }
+
+    .hdr-tag {
+      font-size: 8px; letter-spacing: 0.22em; color: var(--t3);
+      transition: color 0.3s;
     }
-    .calc.glow-active {
-      box-shadow:
-        0 0 0 1px rgba(0,229,255,0.15) inset,
-        0 40px 80px rgba(0,0,0,0.6),
-        0 0 80px rgba(0,229,255,0.15),
-        0 0 140px rgba(0,229,255,0.07);
+    .hdr-tag.active { color: var(--gold); }
+
+    .mode-toggle {
+      display: flex;
+      border: 1px solid var(--border-hi);
+      border-radius: 1px; overflow: hidden;
     }
+    .mode-btn {
+      padding: 3px 9px;
+      font-family: inherit; font-size: 8px; font-weight: 600;
+      letter-spacing: 0.2em; color: var(--t2);
+      background: transparent; border: none; cursor: pointer;
+      transition: all 0.12s;
+    }
+    .mode-btn + .mode-btn { border-left: 1px solid var(--border-hi); }
+    .mode-btn.on { background: var(--gold-a); color: var(--gold); }
+    .mode-btn:hover:not(.on) { color: var(--t1); background: var(--border); }
 
     /* ── Display ── */
     .display {
-      background: rgba(0,0,0,0.30);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 14px;
-      padding: 16px 18px 12px;
-      margin-bottom: 16px;
-      min-height: 108px;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--border);
+      min-height: 178px;
       display: flex; flex-direction: column; justify-content: flex-end;
-      position: relative;
-      overflow: hidden;
-    }
-    .display::before {
-      content: '';
-      position: absolute; top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(0,229,255,0.3), rgba(181,107,255,0.3), transparent);
-      opacity: 0;
-      transition: opacity 0.3s;
-    }
-    .display.lit::before { opacity: 1; }
-
-    .display-expr {
-      font-size: 11px;
-      color: var(--text-dim);
-      min-height: 16px;
-      word-break: break-all;
-      line-height: 1.5;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      margin-bottom: 6px;
-      letter-spacing: 0.02em;
+      background: linear-gradient(180deg, rgba(0,0,0,0.16) 0%, transparent 100%);
     }
 
-    .display-main {
-      font-size: clamp(22px, 5vw, 34px);
-      font-weight: 300;
-      color: var(--text);
-      word-break: break-all;
-      line-height: 1.2;
-      overflow-y: auto;
-      max-height: 130px;
-      letter-spacing: -0.01em;
-      transition: color 0.2s;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(0,229,255,0.2) transparent;
+    .expr-line {
+      font-size: 12px; color: var(--t2);
+      font-style: italic; font-weight: 300;
+      min-height: 19px; word-break: break-all;
+      line-height: 1.7; letter-spacing: 0.01em;
     }
-    .display-main.long {
-      font-size: clamp(12px, 2.5vw, 16px);
-      font-weight: 400;
+    .cursor {
+      display: inline-block; width: 1.5px; height: 12px;
+      background: var(--gold); vertical-align: middle; margin-left: 1px;
+      animation: blink 1.1s step-end infinite;
     }
-    .display-main.result-glow {
-      color: var(--glow-cyan);
-      text-shadow: 0 0 20px rgba(0,229,255,0.5), 0 0 40px rgba(0,229,255,0.2);
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+    .result-row {
+      display: flex; align-items: flex-end; gap: 10px; margin-top: 6px;
+    }
+    .result-val {
+      font-size: clamp(26px, 5vw, 46px); font-weight: 300;
+      letter-spacing: -0.025em; color: var(--t1); flex: 1;
+      word-break: break-all; overflow-y: auto; max-height: 130px;
+      scrollbar-width: thin; scrollbar-color: var(--border-hi) transparent;
+      line-height: 1.1; transition: color 0.25s, text-shadow 0.25s;
+    }
+    .result-val.flash { color: var(--gold); text-shadow: 0 0 32px rgba(184,151,90,0.28); }
+    .result-val.err   { color: var(--red); font-size: 14px; font-weight: 400; }
+    .result-val.long  { font-size: clamp(10px,2vw,14px); font-weight: 400; }
+
+    .copy-btn {
+      flex-shrink: 0; width: 26px; height: 26px;
+      border: 1px solid var(--border-hi); border-radius: 1px;
+      background: transparent; color: var(--t2); font-size: 14px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.12s; opacity: 0; pointer-events: none;
+    }
+    .copy-btn.show { opacity: 1; pointer-events: auto; }
+    .copy-btn:hover { border-color: var(--gold); color: var(--gold); }
+    .copy-btn.ok { border-color: var(--gold); color: var(--gold); background: var(--gold-a); }
+
+    .disp-footer {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-top: 10px;
+    }
+    .hist-line {
+      font-size: 9px; color: var(--t3); cursor: pointer;
+      transition: color 0.12s; flex: 1; overflow: hidden;
+      white-space: nowrap; text-overflow: ellipsis;
+    }
+    .hist-line:hover { color: var(--t2); }
+    .hist-line .heq { color: var(--gold); opacity: 0.65; }
+    .char-badge { font-size: 8px; letter-spacing: 0.1em; color: var(--t3); flex-shrink: 0; }
+    .char-badge.hi { color: var(--t2); }
+
+    /* ── Keyboard ── */
+    .kb { padding: 16px 18px 20px; display: flex; flex-direction: column; gap: 13px; }
+
+    .section { display: flex; flex-direction: column; gap: 5px; }
+
+    .sec-lbl {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 7px; font-weight: 600;
+      letter-spacing: 0.38em; color: var(--t3);
+      text-transform: uppercase; padding: 0 1px;
+    }
+    .sec-lbl::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
     }
 
-    .char-count {
-      font-size: 9px;
-      letter-spacing: 0.1em;
-      color: var(--text-dim);
-      text-align: right;
-      margin-top: 6px;
-      opacity: 0;
-      transition: opacity 0.3s;
+    .krow {
+      display: grid; gap: 5px;
+      grid-template-columns: repeat(var(--cols, 6), 1fr);
     }
-    .char-count.visible { opacity: 1; }
 
-    /* ── Buttons grid ── */
-    .grid {
+    /* ── Key base ── */
+    .k {
+      position: relative; height: 42px;
+      border: 1px solid var(--border); border-radius: 2px;
+      background: transparent; color: var(--t1);
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px; font-weight: 400;
+      cursor: pointer; outline: none;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 1px;
+      transition: background 0.1s, border-color 0.1s, color 0.1s, transform 0.08s;
+      user-select: none; -webkit-tap-highlight-color: transparent; overflow: hidden;
+    }
+    .k::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: currentColor; opacity: 0; transition: opacity 0.1s;
+    }
+    .k:hover::before { opacity: 0.18; }
+    .k:active { transform: scale(0.94); }
+
+    .k-lbl { font-size: 7px; letter-spacing: 0.06em; color: var(--t2); line-height: 1; }
+
+    /* Variants */
+    .k-sci { font-size: 12px; color: var(--steel); }
+    .k-sci:hover { background: var(--steel-a); border-color: var(--steel); color: var(--t1); }
+    .k-sci:active { background: var(--steel-b); }
+
+    .k-const { color: var(--gold); font-size: 15px; }
+    .k-const:hover { background: var(--gold-a); border-color: var(--gold); }
+    .k-const:active { background: var(--gold-b); }
+
+    .k-struct { font-size: 15px; color: var(--t2); }
+    .k-struct:hover { background: var(--panel-hi); border-color: var(--border-hi); color: var(--t1); }
+
+    .k-fn { font-size: 11px; color: var(--t2); letter-spacing: 0.02em; }
+    .k-fn:hover { background: var(--panel-hi); border-color: var(--border-hi); color: var(--t1); }
+
+    .k-num { font-size: 17px; font-weight: 300; }
+    .k-num:hover { background: var(--panel-hi); border-color: var(--border-hi); }
+    .k-num:active { background: var(--border); }
+
+    .k-op { font-size: 20px; font-weight: 300; color: var(--gold); }
+    .k-op:hover { background: var(--gold-a); border-color: var(--gold); }
+    .k-op:active { background: var(--gold-b); }
+
+    .k-eq {
+      background: var(--gold-a); border-color: var(--gold);
+      color: var(--gold); font-size: 22px; font-weight: 300;
+    }
+    .k-eq:hover { background: var(--gold-b); }
+    .k-eq:active { background: rgba(184,151,90,0.32); }
+
+    .k-del { font-size: 17px; color: var(--red); }
+    .k-del:hover { background: var(--red-a); border-color: var(--red); }
+    .k-del:active { background: var(--red-b); }
+
+    .k-clr { font-size: 10px; letter-spacing: 0.1em; color: var(--red); }
+    .k-clr:hover { background: var(--red-a); border-color: var(--red); }
+
+    .k-util { font-size: 14px; color: var(--t2); }
+    .k-util:hover { background: var(--panel-hi); border-color: var(--border-hi); color: var(--t1); }
+
+    /* Numpad grid */
+    .numpad-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 9px;
+      grid-template-columns: repeat(5, 1fr);
+      grid-template-rows: repeat(4, 42px);
+      gap: 5px;
     }
+    /* = key spans rows 3–4, col 5 */
+    .numpad-grid .k-eq   { grid-column: 5; grid-row: 3 / 5; height: auto; }
+    .numpad-grid .k-wide { grid-column: span 2; }
 
-    /* ── Button base ── */
-    .btn {
-      position: relative;
-      height: 60px;
-      border: 1px solid var(--glass-border);
-      border-radius: 12px;
-      background: var(--glass);
-      color: var(--text);
-      font-family: 'DM Mono', monospace;
-      font-size: 16px;
-      font-weight: 400;
-      cursor: pointer;
-      outline: none;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      transition: all 0.15s ease;
-      overflow: hidden;
-      user-select: none;
-      -webkit-tap-highlight-color: transparent;
+    /* ── Statusbar ── */
+    .statusbar {
+      padding: 8px 20px; border-top: 1px solid var(--border);
+      background: var(--panel-hi);
+      display: flex; align-items: center; justify-content: space-between;
     }
-    .btn::after {
-      content: '';
-      position: absolute; inset: 0;
-      background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
-      border-radius: inherit;
-      pointer-events: none;
-    }
+    .statusbar span { font-size: 8px; letter-spacing: 0.15em; color: var(--t3); }
+    .statusbar .ang { color: var(--t2); }
 
-    .btn:hover {
-      background: var(--glass-hover);
-      border-color: rgba(255,255,255,0.18);
-      transform: translateY(-1px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
-    }
-    .btn:active {
-      transform: translateY(0) scale(0.96);
-      box-shadow: none;
-    }
-
-    /* Ripple */
-    .btn .ripple {
-      position: absolute;
-      border-radius: 50%;
-      transform: scale(0);
-      animation: ripple 0.5s linear;
-      background: rgba(255,255,255,0.15);
-      pointer-events: none;
-    }
-    @keyframes ripple {
-      to { transform: scale(4); opacity: 0; }
-    }
-
-    /* ── Button variants ── */
-    .btn-op {
-      border-color: rgba(0,229,255,0.2);
-      color: var(--glow-cyan);
-    }
-    .btn-op:hover {
-      border-color: rgba(0,229,255,0.4);
-      background: rgba(0,229,255,0.08);
-      box-shadow: 0 0 20px rgba(0,229,255,0.15), 0 8px 20px rgba(0,0,0,0.3);
-      text-shadow: 0 0 12px rgba(0,229,255,0.7);
-    }
-
-    .btn-eq {
-      background: linear-gradient(135deg, rgba(0,229,255,0.18), rgba(181,107,255,0.18));
-      border-color: rgba(0,229,255,0.30);
-      color: #fff;
-      font-size: 22px;
-    }
-    .btn-eq:hover {
-      background: linear-gradient(135deg, rgba(0,229,255,0.28), rgba(181,107,255,0.28));
-      border-color: rgba(0,229,255,0.5);
-      box-shadow:
-        0 0 30px rgba(0,229,255,0.25),
-        0 0 60px rgba(181,107,255,0.15),
-        0 8px 20px rgba(0,0,0,0.4);
-    }
-
-    .btn-clear {
-      border-color: rgba(255,77,189,0.20);
-      color: var(--glow-pink);
-    }
-    .btn-clear:hover {
-      border-color: rgba(255,77,189,0.4);
-      background: rgba(255,77,189,0.08);
-      box-shadow: 0 0 20px rgba(255,77,189,0.15), 0 8px 20px rgba(0,0,0,0.3);
-      text-shadow: 0 0 12px rgba(255,77,189,0.7);
-    }
-
-    .btn-fn {
-      border-color: rgba(181,107,255,0.18);
-      color: var(--glow-purple);
-      font-size: 13px;
-    }
-    .btn-fn:hover {
-      border-color: rgba(181,107,255,0.35);
-      background: rgba(181,107,255,0.07);
-      box-shadow: 0 0 20px rgba(181,107,255,0.12), 0 8px 20px rgba(0,0,0,0.3);
-    }
-
-    .btn-zero { grid-column: span 2; }
-
-    /* ── Footer ── */
-    .footer {
-      margin-top: 14px;
-      text-align: center;
-      font-size: 9px;
-      letter-spacing: 0.25em;
-      color: rgba(232,232,248,0.18);
-      text-transform: uppercase;
-    }
-
-    /* Error shake */
     @keyframes shake {
-      0%,100% { transform: translateX(0); }
-      20% { transform: translateX(-6px); }
-      40% { transform: translateX(6px); }
-      60% { transform: translateX(-4px); }
-      80% { transform: translateX(4px); }
+      0%,100%{transform:translateX(0)} 20%{transform:translateX(-6px)} 60%{transform:translateX(6px)}
     }
-    .shake { animation: shake 0.35s ease; }
+    .shake { animation: shake 0.32s ease; }
   </style>
 </head>
 <body>
 
-<div class="orb orb1"></div>
-<div class="orb orb2"></div>
-<div class="orb orb3"></div>
+<div class="terminal">
 
-<div class="scene">
-  <div class="calc-wrap">
-    <div class="label">// glass calc</div>
-
-    <div class="calc" id="calc">
-
-      <div class="display" id="display">
-        <div class="display-expr" id="expr"></div>
-        <div class="display-main" id="main">0</div>
-        <div class="char-count" id="charCount"></div>
+  <!-- Header -->
+  <div class="hdr">
+    <div class="brand"><em>Λ</em>CALC</div>
+    <div class="hdr-right">
+      <div class="hdr-tag" id="hdrTag">READY</div>
+      <div class="mode-toggle">
+        <button class="mode-btn on" id="mDeg" onclick="setMode('deg')">DEG</button>
+        <button class="mode-btn"    id="mRad" onclick="setMode('rad')">RAD</button>
       </div>
+    </div>
+  </div>
 
-      <div class="grid">
-        <!-- Row 1 -->
-        <button class="btn btn-clear" data-action="clear">AC</button>
-        <button class="btn btn-fn"    data-action="sign">±</button>
-        <button class="btn btn-fn"    data-action="pct">%</button>
-        <button class="btn btn-op"    data-action="op" data-val="÷">÷</button>
+  <!-- Display -->
+  <div class="display">
+    <div class="expr-line" id="exprLine">
+      <span id="exprSpan"></span><span class="cursor"></span>
+    </div>
+    <div class="result-row">
+      <div class="result-val" id="resultVal">0</div>
+      <button class="copy-btn" id="copyBtn" onclick="copyRes()">⊕</button>
+    </div>
+    <div class="disp-footer">
+      <div class="hist-line" id="histLine"></div>
+      <div class="char-badge" id="charBadge"></div>
+    </div>
+  </div>
 
-        <!-- Row 2 -->
-        <button class="btn" data-action="num" data-val="7">7</button>
-        <button class="btn" data-action="num" data-val="8">8</button>
-        <button class="btn" data-action="num" data-val="9">9</button>
-        <button class="btn btn-op" data-action="op" data-val="×">×</button>
+  <!-- Keyboard -->
+  <div class="kb">
 
-        <!-- Row 3 -->
-        <button class="btn" data-action="num" data-val="4">4</button>
-        <button class="btn" data-action="num" data-val="5">5</button>
-        <button class="btn" data-action="num" data-val="6">6</button>
-        <button class="btn btn-op" data-action="op" data-val="−">−</button>
-
-        <!-- Row 4 -->
-        <button class="btn" data-action="num" data-val="1">1</button>
-        <button class="btn" data-action="num" data-val="2">2</button>
-        <button class="btn" data-action="num" data-val="3">3</button>
-        <button class="btn btn-op" data-action="op" data-val="+">+</button>
-
-        <!-- Row 5 -->
-        <button class="btn btn-zero" data-action="num" data-val="0">0</button>
-        <button class="btn" data-action="dot">.</button>
-        <button class="btn btn-eq" data-action="equals">=</button>
+    <!-- TRIG -->
+    <div class="section">
+      <div class="sec-lbl">Trigonometric</div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-sci" data-i="sin("    title="Sine">sin</button>
+        <button class="k k-sci" data-i="cos("    title="Cosine">cos</button>
+        <button class="k k-sci" data-i="tan("    title="Tangent">tan</button>
+        <button class="k k-sci" data-i="asin("   title="Arc-sine">asin</button>
+        <button class="k k-sci" data-i="acos("   title="Arc-cosine">acos</button>
+        <button class="k k-sci" data-i="atan("   title="Arc-tangent">atan</button>
+      </div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-sci" data-i="sinh("   title="Hyperbolic sine">sinh</button>
+        <button class="k k-sci" data-i="cosh("   title="Hyperbolic cosine">cosh</button>
+        <button class="k k-sci" data-i="tanh("   title="Hyperbolic tangent">tanh</button>
+        <button class="k k-sci" data-i="asinh("  title="Inverse hyperbolic sine">asinh</button>
+        <button class="k k-sci" data-i="acosh("  title="Inverse hyperbolic cosine">acosh</button>
+        <button class="k k-sci" data-i="atanh("  title="Inverse hyperbolic tangent">atanh</button>
       </div>
     </div>
 
-    <div class="footer">ultra-precision · up to 1000 chars</div>
+    <!-- POWER & LOG -->
+    <div class="section">
+      <div class="sec-lbl">Power &amp; Logarithms</div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-sci" data-i="^2"       title="Square: x²">x²</button>
+        <button class="k k-sci" data-i="^3"       title="Cube: x³">x³</button>
+        <button class="k k-sci" data-i="^("       title="Power: xⁿ">xⁿ</button>
+        <button class="k k-sci" data-i="sqrt("    title="Square root">√x</button>
+        <button class="k k-sci" data-i="cbrt("    title="Cube root">∛x</button>
+        <button class="k k-sci" data-i="nthRoot(" title="Nth root: nthRoot(x,n)">ⁿ√x</button>
+      </div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-sci" data-i="log10("   title="Base-10 logarithm">log</button>
+        <button class="k k-sci" data-i="log2("    title="Base-2 logarithm">log₂</button>
+        <button class="k k-sci" data-i="log("     title="Natural logarithm ln(x)">ln</button>
+        <button class="k k-sci" data-i="exp("     title="e to the power x">eˣ</button>
+        <button class="k k-sci" data-i="10^("     title="10 to the power x">10ˣ</button>
+        <button class="k k-sci" data-i="2^("      title="2 to the power x">2ˣ</button>
+      </div>
+    </div>
+
+    <!-- CONSTANTS & STRUCTURE -->
+    <div class="section">
+      <div class="sec-lbl">Constants &amp; Structure</div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-const" data-i="π"     title="Pi ≈ 3.14159…">π</button>
+        <button class="k k-const" data-i="e"     title="Euler's number ≈ 2.71828…">e</button>
+        <button class="k k-const" data-i="φ"     title="Golden ratio ≈ 1.61803…">φ</button>
+        <button class="k k-const" data-i="τ"     title="Tau = 2π ≈ 6.28318…">τ</button>
+        <button class="k k-const" data-i="Ans"   title="Previous result">Ans</button>
+        <button class="k k-const" data-i="i"     title="Imaginary unit √−1">i</button>
+      </div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-struct" data-i="("    title="Open parenthesis">(</button>
+        <button class="k k-struct" data-i=")"    title="Close parenthesis">)</button>
+        <button class="k k-struct" data-i=","    title="Argument separator">,</button>
+        <button class="k k-struct" data-i="!"    title="Factorial n!">n!</button>
+        <button class="k k-struct" data-i=" % "  title="Modulo remainder">mod</button>
+        <button class="k k-struct" data-i="^0.5)" title="Used after ( to get magnitude">|v|</button>
+      </div>
+    </div>
+
+    <!-- ANALYSIS -->
+    <div class="section">
+      <div class="sec-lbl">Analysis &amp; Functions</div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-fn" data-i="abs("     title="Absolute value">|x|</button>
+        <button class="k k-fn" data-i="floor("   title="Round toward −∞">⌊x⌋</button>
+        <button class="k k-fn" data-i="ceil("    title="Round toward +∞">⌈x⌉</button>
+        <button class="k k-fn" data-i="round("   title="Round to nearest">round</button>
+        <button class="k k-fn" data-i="sign("    title="Sign: −1, 0, or 1">sign</button>
+        <button class="k k-fn" data-i="gamma("   title="Gamma Γ(n) = (n-1)!">Γ(n)</button>
+      </div>
+      <div class="krow" style="--cols:6">
+        <button class="k k-fn" data-i="gcd("     title="Greatest common divisor">gcd</button>
+        <button class="k k-fn" data-i="lcm("     title="Least common multiple">lcm</button>
+        <button class="k k-fn" data-i="max("     title="Maximum of values">max</button>
+        <button class="k k-fn" data-i="min("     title="Minimum of values">min</button>
+        <button class="k k-fn" data-i="sum("     title="Sum of values">sum</button>
+        <button class="k k-fn" data-i="mean("    title="Arithmetic mean">mean</button>
+      </div>
+    </div>
+
+    <!-- CORE NUMPAD -->
+    <div class="section">
+      <div class="sec-lbl">Core</div>
+      <div class="numpad-grid">
+        <button class="k k-num"  data-i="7">7</button>
+        <button class="k k-num"  data-i="8">8</button>
+        <button class="k k-num"  data-i="9">9</button>
+        <button class="k k-op"   data-i="÷">÷</button>
+        <button class="k k-del"  data-a="del">⌫</button>
+
+        <button class="k k-num"  data-i="4">4</button>
+        <button class="k k-num"  data-i="5">5</button>
+        <button class="k k-num"  data-i="6">6</button>
+        <button class="k k-op"   data-i="×">×</button>
+        <button class="k k-clr"  data-a="clear">CE</button>
+
+        <button class="k k-num"  data-i="1">1</button>
+        <button class="k k-num"  data-i="2">2</button>
+        <button class="k k-num"  data-i="3">3</button>
+        <button class="k k-op"   data-i="−">−</button>
+        <!-- = spans col 5, rows 3-4 in CSS -->
+        <button class="k k-eq"   data-a="eval">=</button>
+
+        <button class="k k-num k-wide" data-i="0">0</button>
+        <button class="k k-num"  data-i=".">.</button>
+        <button class="k k-op"   data-i="+">+</button>
+        <button class="k k-util" data-a="negate">±</button>
+      </div>
+    </div>
+
   </div>
+
+  <!-- Statusbar -->
+  <div class="statusbar">
+    <span>ΛCALC · powered by math.js · 1000 char precision</span>
+    <span class="ang" id="angleInd">DEG</span>
+  </div>
+
 </div>
 
 <script>
-  const MAX_CHARS = 1000;
-  const mainEl   = document.getElementById('main');
-  const exprEl   = document.getElementById('expr');
-  const calcEl   = document.getElementById('calc');
-  const displayEl= document.getElementById('display');
-  const countEl  = document.getElementById('charCount');
+  let expr    = '';
+  let lastAns = null;
+  let mode    = 'deg';
+  let lastHistEntry = null;
+  const MAX   = 1000;
 
-  let current  = '0';
-  let prev     = '';
-  let operator = '';
-  let fresh    = false;   // next digit clears display
+  const exprSpan  = document.getElementById('exprSpan');
+  const resultEl  = document.getElementById('resultVal');
+  const copyBtn   = document.getElementById('copyBtn');
+  const histLine  = document.getElementById('histLine');
+  const charBadge = document.getElementById('charBadge');
+  const hdrTag    = document.getElementById('hdrTag');
+  const angleInd  = document.getElementById('angleInd');
 
-  /* ── Update UI ── */
-  function render(isResult = false) {
-    const str = current.length > MAX_CHARS ? current.slice(0, MAX_CHARS) : current;
-    mainEl.textContent = str;
+  /* ── Angle mode ── */
+  function setMode(m) {
+    mode = m;
+    math.config({ angles: m });
+    document.getElementById('mDeg').classList.toggle('on', m === 'deg');
+    document.getElementById('mRad').classList.toggle('on', m === 'rad');
+    angleInd.textContent = m.toUpperCase();
+  }
+  math.config({ angles: 'deg' });
 
-    // Font size adapt
-    mainEl.classList.toggle('long', str.length > 20);
-
-    // Glow on result
-    mainEl.classList.toggle('result-glow', isResult);
-
-    // Char count badge
-    if (str.length > 15) {
-      countEl.textContent = str.length + ' chars';
-      countEl.classList.add('visible');
+  /* ── Render ── */
+  function render() {
+    exprSpan.textContent = expr;
+    if (expr.length > 20) {
+      charBadge.textContent = expr.length + ' / ' + MAX;
+      charBadge.classList.add('hi');
     } else {
-      countEl.classList.remove('visible');
+      charBadge.textContent = '';
+      charBadge.classList.remove('hi');
     }
-
-    // Display glow
-    displayEl.classList.toggle('lit', isResult);
-    calcEl.classList.toggle('glow-active', isResult);
-  }
-
-  function setExpr(txt) {
-    exprEl.textContent = txt;
-  }
-
-  /* ── Input a digit ── */
-  function inputNum(v) {
-    if (fresh) { current = v; fresh = false; }
-    else {
-      if (current === '0' && v !== '.') current = v;
-      else if (current.length < MAX_CHARS) current += v;
+    // Live preview
+    if (expr && !resultEl.classList.contains('flash')) {
+      try {
+        const v = evalExpr(expr);
+        const s = fmtNum(v);
+        resultEl.textContent = s.slice(0, MAX);
+        resultEl.className   = 'result-val' + (s.length > 30 ? ' long' : '');
+      } catch(_) {}
     }
-    mainEl.classList.remove('result-glow');
-    calcEl.classList.remove('glow-active');
-    displayEl.classList.remove('lit');
-    render();
   }
 
-  function inputDot() {
-    if (fresh) { current = '0.'; fresh = false; render(); return; }
-    if (!current.includes('.')) { current += '.'; render(); }
+  /* ── Evaluate ── */
+  function evalExpr(raw) {
+    const s = raw
+      .replace(/×/g, '*')
+      .replace(/÷/g, '/')
+      .replace(/−/g, '-')
+      .replace(/π/g, 'pi')
+      .replace(/τ/g, '(2*pi)')
+      .replace(/φ/g, '((1+sqrt(5))/2)')
+      .replace(/Ans/g, lastAns !== null ? '(' + lastAns + ')' : '0');
+    return math.evaluate(s);
   }
 
-  /* ── Operators ── */
-  function inputOp(op) {
-    if (operator && !fresh) compute(false);
-    prev     = current;
-    operator = op;
-    fresh    = true;
-    setExpr(prev + ' ' + op);
-    mainEl.classList.remove('result-glow');
-    calcEl.classList.remove('glow-active');
-    displayEl.classList.remove('lit');
+  function fmtNum(val) {
+    if (val && typeof val === 'object') return val.toString();
+    const n = Number(val);
+    if (!isFinite(n)) return String(val);
+    if (Number.isInteger(n) && Math.abs(n) < 1e15) return String(n);
+    let s = n.toPrecision(20).replace(/\.?0+$/, '');
+    return s.length > MAX ? s.slice(0, MAX) : s;
   }
 
   /* ── Compute ── */
-  function compute(showResult = true) {
-    if (!operator || !prev) return;
-    const a = parseFloat(prev);
-    const b = parseFloat(current);
-    let result;
-    switch (operator) {
-      case '+': result = a + b; break;
-      case '−': result = a - b; break;
-      case '×': result = a * b; break;
-      case '÷':
-        if (b === 0) { error('Division by zero'); return; }
-        result = a / b; break;
-      default: return;
+  function compute() {
+    if (!expr.trim()) return;
+    try {
+      const val = evalExpr(expr);
+      const str = fmtNum(val).slice(0, MAX);
+
+      lastAns = Number(val);
+      lastHistEntry = { e: expr.slice(0, 72), r: str.slice(0, 52) };
+
+      resultEl.textContent = str;
+      resultEl.className   = 'result-val flash' + (str.length > 30 ? ' long' : '');
+      setTimeout(() => resultEl.classList.remove('flash'), 700);
+
+      copyBtn.classList.add('show');
+      setTag('RESULT');
+
+      histLine.innerHTML = lastHistEntry.e + ' <span class="heq">= ' + lastHistEntry.r + '</span>';
+      histLine.onclick = () => { expr = lastHistEntry.e; resultEl.classList.remove('flash'); render(); };
+
+      if (str.length > 20) {
+        charBadge.textContent = str.length + ' chars';
+        charBadge.classList.add('hi');
+      }
+
+      expr = str;
+      exprSpan.textContent = str;
+
+    } catch(err) {
+      resultEl.textContent = err.message || 'error';
+      resultEl.className   = 'result-val err shake';
+      setTimeout(() => resultEl.classList.remove('shake'), 380);
+      setTag('ERROR');
     }
-    setExpr(prev + ' ' + operator + ' ' + current + ' =');
-
-    // Represent precisely but cap at 1000 chars
-    let str = '';
-    if (!Number.isFinite(result)) { error('Overflow'); return; }
-    // Try full precision
-    str = result.toPrecision(21).replace(/\.?0+$/, '');
-    if (str.length > MAX_CHARS) str = str.slice(0, MAX_CHARS);
-    // Fallback if toPrecision fails for very large
-    if (!str || str === 'NaN' || str === 'Infinity') str = String(result);
-
-    current  = str;
-    operator = '';
-    prev     = '';
-    fresh    = true;
-    render(showResult);
   }
 
-  /* ── Special ops ── */
-  function sign() {
-    if (current === '0') return;
-    current = current.startsWith('-') ? current.slice(1) : '-' + current;
+  function setTag(t) {
+    hdrTag.textContent = t;
+    hdrTag.classList.toggle('active', t !== 'READY');
+    clearTimeout(hdrTag._t);
+    hdrTag._t = setTimeout(() => { hdrTag.textContent = 'READY'; hdrTag.classList.remove('active'); }, 2200);
+  }
+
+  /* ── Insert ── */
+  function insert(s) {
+    if (expr.length + s.length > MAX) return;
+    expr += s;
+    resultEl.classList.remove('flash');
+    copyBtn.classList.remove('show');
     render();
   }
 
-  function percent() {
-    const n = parseFloat(current) / 100;
-    current = String(n);
+  /* ── Smart backspace ── */
+  function del() {
+    if (!expr) return;
+    const m = expr.match(/(nthRoot\(|log10\(|log2\(|asinh\(|acosh\(|atanh\(|sinh\(|cosh\(|tanh\(|gamma\(|floor\(|round\(|cbrt\(|sqrt\(|ceil\(|asin\(|acos\(|atan\(|mean\(|abs\(|sign\(|exp\(|gcd\(|lcm\(|max\(|min\(|sum\(|sin\(|cos\(|tan\(|log\()$/);
+    expr = m ? expr.slice(0, -m[0].length) : expr.slice(0, -1);
     render();
   }
 
-  function clear() {
-    current = '0'; prev = ''; operator = ''; fresh = false;
-    setExpr('');
-    mainEl.classList.remove('result-glow');
-    calcEl.classList.remove('glow-active');
-    displayEl.classList.remove('lit');
-    countEl.classList.remove('visible');
+  /* ── Clear ── */
+  function clearAll() {
+    expr = '';
+    resultEl.textContent = '0';
+    resultEl.className   = 'result-val';
+    copyBtn.classList.remove('show');
+    charBadge.textContent = ''; charBadge.classList.remove('hi');
+    exprSpan.textContent = '';
+  }
+
+  /* ── Negate ── */
+  function negate() {
+    if (!expr) { expr = '-'; render(); return; }
+    if (expr.startsWith('-(') && expr.endsWith(')')) {
+      expr = expr.slice(2, -1);
+    } else if (expr.startsWith('-')) {
+      expr = expr.slice(1);
+    } else {
+      expr = '-(' + expr + ')';
+    }
     render();
   }
 
-  /* ── Error ── */
-  function error(msg) {
-    current = msg; operator = ''; prev = ''; fresh = true;
-    mainEl.classList.add('shake');
-    setTimeout(() => mainEl.classList.remove('shake'), 400);
-    render(false);
+  /* ── Copy ── */
+  function copyRes() {
+    navigator.clipboard.writeText(resultEl.textContent).then(() => {
+      copyBtn.classList.add('ok'); copyBtn.textContent = '✓';
+      setTimeout(() => { copyBtn.classList.remove('ok'); copyBtn.textContent = '⊕'; }, 1400);
+    });
   }
 
-  /* ── Button click handler ── */
-  document.querySelectorAll('.btn').forEach(btn => {
-    btn.addEventListener('click', function(e) {
-      // Ripple
-      const r = document.createElement('span');
-      r.classList.add('ripple');
-      const rect = this.getBoundingClientRect();
-      const size = Math.max(rect.width, rect.height);
-      r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
-      this.appendChild(r);
-      setTimeout(() => r.remove(), 500);
-
-      const a = this.dataset.action;
-      const v = this.dataset.val;
-      if (a === 'num')    inputNum(v);
-      if (a === 'dot')    inputDot();
-      if (a === 'op')     inputOp(v);
-      if (a === 'equals') compute(true);
-      if (a === 'clear')  clear();
-      if (a === 'sign')   sign();
-      if (a === 'pct')    percent();
+  /* ── Button wiring ── */
+  document.querySelectorAll('.k').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const i = this.dataset.i;
+      const a = this.dataset.a;
+      if (i !== undefined) insert(i);
+      if (a === 'del')    del();
+      if (a === 'clear')  clearAll();
+      if (a === 'eval')   compute();
+      if (a === 'negate') negate();
     });
   });
 
-  /* ── Keyboard support ── */
+  /* ── Physical keyboard ── */
   document.addEventListener('keydown', e => {
-    if ('0123456789'.includes(e.key)) inputNum(e.key);
-    else if (e.key === '.') inputDot();
-    else if (e.key === '+') inputOp('+');
-    else if (e.key === '-') inputOp('−');
-    else if (e.key === '*') inputOp('×');
-    else if (e.key === '/') { e.preventDefault(); inputOp('÷'); }
-    else if (e.key === 'Enter' || e.key === '=') compute(true);
-    else if (e.key === 'Backspace') {
-      if (current.length > 1) current = current.slice(0,-1);
-      else current = '0';
-      render();
-    }
-    else if (e.key === 'Escape') clear();
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if ('0123456789'.includes(e.key))              { insert(e.key); return; }
+    if (e.key === '+')                             { insert('+'); return; }
+    if (e.key === '-')                             { insert('−'); return; }
+    if (e.key === '*')                             { insert('×'); return; }
+    if (e.key === '/')                             { e.preventDefault(); insert('÷'); return; }
+    if (e.key === '.')                             { insert('.'); return; }
+    if (e.key === '(' || e.key === ')')            { insert(e.key); return; }
+    if (e.key === '^')                             { insert('^('); return; }
+    if (e.key === '!')                             { insert('!'); return; }
+    if (e.key === '%')                             { insert(' % '); return; }
+    if (e.key === ',')                             { insert(','); return; }
+    if (e.key === 'Enter' || e.key === '=')        { compute(); return; }
+    if (e.key === 'Backspace')                     { del(); return; }
+    if (e.key === 'Escape' || e.key === 'Delete')  { clearAll(); return; }
   });
 
   render();
