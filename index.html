@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Glass Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@300;400;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg1: #0a0a14;
+      --bg2: #0e0e22;
+      --glass: rgba(255,255,255,0.04);
+      --glass-border: rgba(255,255,255,0.10);
+      --glass-hover: rgba(255,255,255,0.09);
+      --glow-cyan: #00e5ff;
+      --glow-purple: #b56bff;
+      --glow-pink: #ff4dbd;
+      --text: #e8e8f8;
+      --text-dim: rgba(232,232,248,0.45);
+      --accent: #00e5ff;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg1);
+      font-family: 'DM Mono', monospace;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Animated mesh background ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0; z-index: 0;
+      background:
+        radial-gradient(ellipse 70% 50% at 20% 20%, rgba(0,229,255,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 60% at 80% 80%, rgba(181,107,255,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 50% 50%, rgba(255,77,189,0.04) 0%, transparent 70%);
+      animation: meshShift 12s ease-in-out infinite alternate;
+    }
+    @keyframes meshShift {
+      0%   { opacity: 1; transform: scale(1) rotate(0deg); }
+      50%  { opacity: 0.8; transform: scale(1.08) rotate(2deg); }
+      100% { opacity: 1; transform: scale(1) rotate(0deg); }
+    }
+
+    /* Floating orbs */
+    .orb {
+      position: fixed; border-radius: 50%;
+      filter: blur(80px); pointer-events: none; z-index: 0;
+      animation: orbFloat 8s ease-in-out infinite alternate;
+    }
+    .orb1 { width: 340px; height: 340px; top: -80px; left: -80px;
+      background: radial-gradient(circle, rgba(0,229,255,0.18), transparent 70%);
+      animation-duration: 9s; }
+    .orb2 { width: 280px; height: 280px; bottom: -60px; right: -60px;
+      background: radial-gradient(circle, rgba(181,107,255,0.20), transparent 70%);
+      animation-duration: 11s; animation-delay: -4s; }
+    .orb3 { width: 200px; height: 200px; top: 50%; left: 60%;
+      background: radial-gradient(circle, rgba(255,77,189,0.13), transparent 70%);
+      animation-duration: 7s; animation-delay: -2s; }
+    @keyframes orbFloat {
+      from { transform: translate(0,0) scale(1); }
+      to   { transform: translate(30px, 20px) scale(1.1); }
+    }
+
+    /* ── Layout ── */
+    .scene {
+      position: relative; z-index: 1;
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px;
+    }
+
+    .calc-wrap {
+      width: 100%; max-width: 400px;
+    }
+
+    .label {
+      font-family: 'Syne', sans-serif;
+      font-size: 10px; letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      padding-left: 4px;
+    }
+
+    /* ── Main glass card ── */
+    .calc {
+      background: var(--glass);
+      border: 1px solid var(--glass-border);
+      border-radius: 24px;
+      backdrop-filter: blur(30px) saturate(180%);
+      -webkit-backdrop-filter: blur(30px) saturate(180%);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,0.04) inset,
+        0 40px 80px rgba(0,0,0,0.6),
+        0 0 60px rgba(0,229,255,0.04);
+      padding: 20px;
+      transition: box-shadow 0.4s ease;
+    }
+    .calc.glow-active {
+      box-shadow:
+        0 0 0 1px rgba(0,229,255,0.15) inset,
+        0 40px 80px rgba(0,0,0,0.6),
+        0 0 80px rgba(0,229,255,0.15),
+        0 0 140px rgba(0,229,255,0.07);
+    }
+
+    /* ── Display ── */
+    .display {
+      background: rgba(0,0,0,0.30);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 14px;
+      padding: 16px 18px 12px;
+      margin-bottom: 16px;
+      min-height: 108px;
+      display: flex; flex-direction: column; justify-content: flex-end;
+      position: relative;
+      overflow: hidden;
+    }
+    .display::before {
+      content: '';
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(0,229,255,0.3), rgba(181,107,255,0.3), transparent);
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .display.lit::before { opacity: 1; }
+
+    .display-expr {
+      font-size: 11px;
+      color: var(--text-dim);
+      min-height: 16px;
+      word-break: break-all;
+      line-height: 1.5;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+    }
+
+    .display-main {
+      font-size: clamp(22px, 5vw, 34px);
+      font-weight: 300;
+      color: var(--text);
+      word-break: break-all;
+      line-height: 1.2;
+      overflow-y: auto;
+      max-height: 130px;
+      letter-spacing: -0.01em;
+      transition: color 0.2s;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(0,229,255,0.2) transparent;
+    }
+    .display-main.long {
+      font-size: clamp(12px, 2.5vw, 16px);
+      font-weight: 400;
+    }
+    .display-main.result-glow {
+      color: var(--glow-cyan);
+      text-shadow: 0 0 20px rgba(0,229,255,0.5), 0 0 40px rgba(0,229,255,0.2);
+    }
+
+    .char-count {
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      color: var(--text-dim);
+      text-align: right;
+      margin-top: 6px;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .char-count.visible { opacity: 1; }
+
+    /* ── Buttons grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 9px;
+    }
+
+    /* ── Button base ── */
+    .btn {
+      position: relative;
+      height: 60px;
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      background: var(--glass);
+      color: var(--text);
+      font-family: 'DM Mono', monospace;
+      font-size: 16px;
+      font-weight: 400;
+      cursor: pointer;
+      outline: none;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      transition: all 0.15s ease;
+      overflow: hidden;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, transparent 60%);
+      border-radius: inherit;
+      pointer-events: none;
+    }
+
+    .btn:hover {
+      background: var(--glass-hover);
+      border-color: rgba(255,255,255,0.18);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .btn:active {
+      transform: translateY(0) scale(0.96);
+      box-shadow: none;
+    }
+
+    /* Ripple */
+    .btn .ripple {
+      position: absolute;
+      border-radius: 50%;
+      transform: scale(0);
+      animation: ripple 0.5s linear;
+      background: rgba(255,255,255,0.15);
+      pointer-events: none;
+    }
+    @keyframes ripple {
+      to { transform: scale(4); opacity: 0; }
+    }
+
+    /* ── Button variants ── */
+    .btn-op {
+      border-color: rgba(0,229,255,0.2);
+      color: var(--glow-cyan);
+    }
+    .btn-op:hover {
+      border-color: rgba(0,229,255,0.4);
+      background: rgba(0,229,255,0.08);
+      box-shadow: 0 0 20px rgba(0,229,255,0.15), 0 8px 20px rgba(0,0,0,0.3);
+      text-shadow: 0 0 12px rgba(0,229,255,0.7);
+    }
+
+    .btn-eq {
+      background: linear-gradient(135deg, rgba(0,229,255,0.18), rgba(181,107,255,0.18));
+      border-color: rgba(0,229,255,0.30);
+      color: #fff;
+      font-size: 22px;
+    }
+    .btn-eq:hover {
+      background: linear-gradient(135deg, rgba(0,229,255,0.28), rgba(181,107,255,0.28));
+      border-color: rgba(0,229,255,0.5);
+      box-shadow:
+        0 0 30px rgba(0,229,255,0.25),
+        0 0 60px rgba(181,107,255,0.15),
+        0 8px 20px rgba(0,0,0,0.4);
+    }
+
+    .btn-clear {
+      border-color: rgba(255,77,189,0.20);
+      color: var(--glow-pink);
+    }
+    .btn-clear:hover {
+      border-color: rgba(255,77,189,0.4);
+      background: rgba(255,77,189,0.08);
+      box-shadow: 0 0 20px rgba(255,77,189,0.15), 0 8px 20px rgba(0,0,0,0.3);
+      text-shadow: 0 0 12px rgba(255,77,189,0.7);
+    }
+
+    .btn-fn {
+      border-color: rgba(181,107,255,0.18);
+      color: var(--glow-purple);
+      font-size: 13px;
+    }
+    .btn-fn:hover {
+      border-color: rgba(181,107,255,0.35);
+      background: rgba(181,107,255,0.07);
+      box-shadow: 0 0 20px rgba(181,107,255,0.12), 0 8px 20px rgba(0,0,0,0.3);
+    }
+
+    .btn-zero { grid-column: span 2; }
+
+    /* ── Footer ── */
+    .footer {
+      margin-top: 14px;
+      text-align: center;
+      font-size: 9px;
+      letter-spacing: 0.25em;
+      color: rgba(232,232,248,0.18);
+      text-transform: uppercase;
+    }
+
+    /* Error shake */
+    @keyframes shake {
+      0%,100% { transform: translateX(0); }
+      20% { transform: translateX(-6px); }
+      40% { transform: translateX(6px); }
+      60% { transform: translateX(-4px); }
+      80% { transform: translateX(4px); }
+    }
+    .shake { animation: shake 0.35s ease; }
+  </style>
+</head>
+<body>
+
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="scene">
+  <div class="calc-wrap">
+    <div class="label">// glass calc</div>
+
+    <div class="calc" id="calc">
+
+      <div class="display" id="display">
+        <div class="display-expr" id="expr"></div>
+        <div class="display-main" id="main">0</div>
+        <div class="char-count" id="charCount"></div>
+      </div>
+
+      <div class="grid">
+        <!-- Row 1 -->
+        <button class="btn btn-clear" data-action="clear">AC</button>
+        <button class="btn btn-fn"    data-action="sign">±</button>
+        <button class="btn btn-fn"    data-action="pct">%</button>
+        <button class="btn btn-op"    data-action="op" data-val="÷">÷</button>
+
+        <!-- Row 2 -->
+        <button class="btn" data-action="num" data-val="7">7</button>
+        <button class="btn" data-action="num" data-val="8">8</button>
+        <button class="btn" data-action="num" data-val="9">9</button>
+        <button class="btn btn-op" data-action="op" data-val="×">×</button>
+
+        <!-- Row 3 -->
+        <button class="btn" data-action="num" data-val="4">4</button>
+        <button class="btn" data-action="num" data-val="5">5</button>
+        <button class="btn" data-action="num" data-val="6">6</button>
+        <button class="btn btn-op" data-action="op" data-val="−">−</button>
+
+        <!-- Row 4 -->
+        <button class="btn" data-action="num" data-val="1">1</button>
+        <button class="btn" data-action="num" data-val="2">2</button>
+        <button class="btn" data-action="num" data-val="3">3</button>
+        <button class="btn btn-op" data-action="op" data-val="+">+</button>
+
+        <!-- Row 5 -->
+        <button class="btn btn-zero" data-action="num" data-val="0">0</button>
+        <button class="btn" data-action="dot">.</button>
+        <button class="btn btn-eq" data-action="equals">=</button>
+      </div>
+    </div>
+
+    <div class="footer">ultra-precision · up to 1000 chars</div>
+  </div>
+</div>
+
+<script>
+  const MAX_CHARS = 1000;
+  const mainEl   = document.getElementById('main');
+  const exprEl   = document.getElementById('expr');
+  const calcEl   = document.getElementById('calc');
+  const displayEl= document.getElementById('display');
+  const countEl  = document.getElementById('charCount');
+
+  let current  = '0';
+  let prev     = '';
+  let operator = '';
+  let fresh    = false;   // next digit clears display
+
+  /* ── Update UI ── */
+  function render(isResult = false) {
+    const str = current.length > MAX_CHARS ? current.slice(0, MAX_CHARS) : current;
+    mainEl.textContent = str;
+
+    // Font size adapt
+    mainEl.classList.toggle('long', str.length > 20);
+
+    // Glow on result
+    mainEl.classList.toggle('result-glow', isResult);
+
+    // Char count badge
+    if (str.length > 15) {
+      countEl.textContent = str.length + ' chars';
+      countEl.classList.add('visible');
+    } else {
+      countEl.classList.remove('visible');
+    }
+
+    // Display glow
+    displayEl.classList.toggle('lit', isResult);
+    calcEl.classList.toggle('glow-active', isResult);
+  }
+
+  function setExpr(txt) {
+    exprEl.textContent = txt;
+  }
+
+  /* ── Input a digit ── */
+  function inputNum(v) {
+    if (fresh) { current = v; fresh = false; }
+    else {
+      if (current === '0' && v !== '.') current = v;
+      else if (current.length < MAX_CHARS) current += v;
+    }
+    mainEl.classList.remove('result-glow');
+    calcEl.classList.remove('glow-active');
+    displayEl.classList.remove('lit');
+    render();
+  }
+
+  function inputDot() {
+    if (fresh) { current = '0.'; fresh = false; render(); return; }
+    if (!current.includes('.')) { current += '.'; render(); }
+  }
+
+  /* ── Operators ── */
+  function inputOp(op) {
+    if (operator && !fresh) compute(false);
+    prev     = current;
+    operator = op;
+    fresh    = true;
+    setExpr(prev + ' ' + op);
+    mainEl.classList.remove('result-glow');
+    calcEl.classList.remove('glow-active');
+    displayEl.classList.remove('lit');
+  }
+
+  /* ── Compute ── */
+  function compute(showResult = true) {
+    if (!operator || !prev) return;
+    const a = parseFloat(prev);
+    const b = parseFloat(current);
+    let result;
+    switch (operator) {
+      case '+': result = a + b; break;
+      case '−': result = a - b; break;
+      case '×': result = a * b; break;
+      case '÷':
+        if (b === 0) { error('Division by zero'); return; }
+        result = a / b; break;
+      default: return;
+    }
+    setExpr(prev + ' ' + operator + ' ' + current + ' =');
+
+    // Represent precisely but cap at 1000 chars
+    let str = '';
+    if (!Number.isFinite(result)) { error('Overflow'); return; }
+    // Try full precision
+    str = result.toPrecision(21).replace(/\.?0+$/, '');
+    if (str.length > MAX_CHARS) str = str.slice(0, MAX_CHARS);
+    // Fallback if toPrecision fails for very large
+    if (!str || str === 'NaN' || str === 'Infinity') str = String(result);
+
+    current  = str;
+    operator = '';
+    prev     = '';
+    fresh    = true;
+    render(showResult);
+  }
+
+  /* ── Special ops ── */
+  function sign() {
+    if (current === '0') return;
+    current = current.startsWith('-') ? current.slice(1) : '-' + current;
+    render();
+  }
+
+  function percent() {
+    const n = parseFloat(current) / 100;
+    current = String(n);
+    render();
+  }
+
+  function clear() {
+    current = '0'; prev = ''; operator = ''; fresh = false;
+    setExpr('');
+    mainEl.classList.remove('result-glow');
+    calcEl.classList.remove('glow-active');
+    displayEl.classList.remove('lit');
+    countEl.classList.remove('visible');
+    render();
+  }
+
+  /* ── Error ── */
+  function error(msg) {
+    current = msg; operator = ''; prev = ''; fresh = true;
+    mainEl.classList.add('shake');
+    setTimeout(() => mainEl.classList.remove('shake'), 400);
+    render(false);
+  }
+
+  /* ── Button click handler ── */
+  document.querySelectorAll('.btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      // Ripple
+      const r = document.createElement('span');
+      r.classList.add('ripple');
+      const rect = this.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      r.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+      this.appendChild(r);
+      setTimeout(() => r.remove(), 500);
+
+      const a = this.dataset.action;
+      const v = this.dataset.val;
+      if (a === 'num')    inputNum(v);
+      if (a === 'dot')    inputDot();
+      if (a === 'op')     inputOp(v);
+      if (a === 'equals') compute(true);
+      if (a === 'clear')  clear();
+      if (a === 'sign')   sign();
+      if (a === 'pct')    percent();
+    });
+  });
+
+  /* ── Keyboard support ── */
+  document.addEventListener('keydown', e => {
+    if ('0123456789'.includes(e.key)) inputNum(e.key);
+    else if (e.key === '.') inputDot();
+    else if (e.key === '+') inputOp('+');
+    else if (e.key === '-') inputOp('−');
+    else if (e.key === '*') inputOp('×');
+    else if (e.key === '/') { e.preventDefault(); inputOp('÷'); }
+    else if (e.key === 'Enter' || e.key === '=') compute(true);
+    else if (e.key === 'Backspace') {
+      if (current.length > 1) current = current.slice(0,-1);
+      else current = '0';
+      render();
+    }
+    else if (e.key === 'Escape') clear();
+  });
+
+  render();
+</script>
+</body>
+</html>
